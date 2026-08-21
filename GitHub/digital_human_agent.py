@@ -441,10 +441,9 @@ def render_chat_interface():
     with chat_container:
         # 加载保存的历史对话
         history_manager = st.session_state.chat_history_manager
-        saved_history = history_manager.get_history()
-        
-        # 合并session中的消息和历史
-        all_messages = saved_history + st.session_state.chat_messages
+        # 页面只显示当前 Streamlit 会话中的消息。
+        # 历史管理器仍负责保存和导出，不再重复参与显示。
+        all_messages = st.session_state.chat_messages
         
         for msg in all_messages:
             role = msg.get('role', '')
