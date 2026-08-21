@@ -516,19 +516,78 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 cursor: grabbing;
                 transition: none;
                 opacity: 0.92;
-                z-index: 100;
+                z-index: 120;
+                transform: none;
             }}
 
-            /* 拖动过布局后，原来按固定坐标绘制的管线会隐藏，改由 SVG 实时连线。 */
-            .plant-container.layout-edited .flow-line,
-            .plant-container.layout-edited .water-flow,
-            .plant-container.layout-edited .gas-flow,
-            .plant-container.layout-edited .sludge-flow,
-            .plant-container.layout-edited .air-flow,
-            .plant-container.layout-edited .flow-arrow,
-            .plant-container.layout-edited .particle {{
-                display: none;
+            .unit.editor-selected {{
+                outline: 3px solid #FFD700;
+                outline-offset: 3px;
+                transform: none;
             }}
+
+            .connection-port {{
+                position: absolute;
+                width: 12px;
+                height: 12px;
+                padding: 0;
+                border: 2px solid white;
+                border-radius: 50%;
+                background: #0066cc;
+                box-shadow: 0 0 0 1px #00509e;
+                display: none;
+                cursor: crosshair;
+                z-index: 150;
+            }}
+
+            .unit.editor-selected .connection-port,
+            .plant-container.connecting .connection-port {{ display: block; }}
+            .connection-port[data-side="top"] {{ top: -8px; left: calc(50% - 6px); }}
+            .connection-port[data-side="right"] {{ right: -8px; top: calc(50% - 6px); }}
+            .connection-port[data-side="bottom"] {{ bottom: -8px; left: calc(50% - 6px); }}
+            .connection-port[data-side="left"] {{ left: -8px; top: calc(50% - 6px); }}
+            .connection-port.pending {{ background: #ff9800; transform: scale(1.35); }}
+
+            .flow-editor-toolbar {{
+                position: absolute;
+                top: 8px;
+                left: 10px;
+                right: 10px;
+                min-height: 78px;
+                padding: 8px 10px;
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 7px;
+                background: rgba(255, 255, 255, 0.96);
+                border: 1px solid #9bbbd4;
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+                z-index: 300;
+                font-size: 12px;
+            }}
+
+            .flow-editor-toolbar input,
+            .flow-editor-toolbar select,
+            .flow-editor-toolbar button {{
+                height: 30px;
+                box-sizing: border-box;
+                border: 1px solid #9aa7b2;
+                border-radius: 5px;
+                padding: 4px 8px;
+                font-size: 12px;
+            }}
+
+            .flow-editor-toolbar input {{ width: 115px; }}
+            .flow-editor-toolbar button {{
+                background: #0878c9;
+                color: white;
+                border-color: #0878c9;
+                cursor: pointer;
+            }}
+            .flow-editor-toolbar button.secondary {{ background: #607d8b; border-color: #607d8b; }}
+            .flow-editor-toolbar button.danger {{ background: #d64545; border-color: #d64545; }}
+            .flow-editor-status {{ flex-basis: 100%; color: #345; line-height: 18px; }}
 
             .dynamic-connection-layer {{
                 position: absolute;
@@ -537,23 +596,37 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 height: 100%;
                 overflow: visible;
                 pointer-events: none;
-                z-index: 5;
+                z-index: 6;
             }}
 
             .dynamic-pipe {{
                 fill: none;
                 stroke-linecap: round;
                 stroke-linejoin: round;
+                pointer-events: stroke;
+                cursor: pointer;
+            }}
+            .dynamic-pipe.selected {{ filter: drop-shadow(0 0 4px #ffcc00); }}
+            .dynamic-label {{
+                font-size: 12px;
+                font-weight: 600;
+                paint-order: stroke;
+                stroke: white;
+                stroke-width: 4px;
+                stroke-linejoin: round;
+                pointer-events: none;
             }}
 
-            .dynamic-pipe.water {{
-                stroke-dasharray: 12 8;
-                animation: pipeFlow 1s linear infinite;
-            }}
-
-            @keyframes pipeFlow {{
-                to {{ stroke-dashoffset: -20; }}
-            }}
+            /* 初始时保留原图；开始编辑后隐藏所有固定管线、箭头和固定流向标注。 */
+            .plant-container.editor-active .flow-line,
+            .plant-container.editor-active .water-flow,
+            .plant-container.editor-active .gas-flow,
+            .plant-container.editor-active .sludge-flow,
+            .plant-container.editor-active .air-flow,
+            .plant-container.editor-active .flow-arrow,
+            .plant-container.editor-active .flow-label,
+            .plant-container.editor-active .special-flow-label,
+            .plant-container.editor-active .particle {{ display: none; }}
 
             .unit:hover {{
                 transform: scale(1.05);
@@ -756,6 +829,29 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
     </head>
     <body>
         <div class="plant-container">
+            <div class="flow-editor-toolbar" id="flowEditorToolbar">
+                <input id="newUnitName" type="text" maxlength="20" placeholder="新组件名称">
+                <select id="newUnitType" title="组件类型">
+                    <option value="pre-treatment">预处理</option>
+                    <option value="bio-treatment">生物处理</option>
+                    <option value="advanced-treatment">深度处理</option>
+                    <option value="sludge-treatment">污泥处理</option>
+                    <option value="auxiliary">辅助设施</option>
+                    <option value="effluent-area">出水设施</option>
+                </select>
+                <button id="addUnitButton" type="button">＋ 添加组件</button>
+                <select id="newLineType" title="管线类型">
+                    <option value="water">水流</option>
+                    <option value="sludge">污泥</option>
+                    <option value="gas">臭气</option>
+                    <option value="air">空气</option>
+                </select>
+                <input id="newLineLabel" type="text" maxlength="20" placeholder="管线标注（可选）">
+                <button id="connectButton" type="button" class="secondary">连接组件</button>
+                <button id="deleteButton" type="button" class="danger">删除所选</button>
+                <button id="resetLayoutButton" type="button" class="secondary">恢复原始流程</button>
+                <div class="flow-editor-status" id="flowEditorStatus">可直接拖动现有组件；连接时先点击“连接组件”，再点击起点和终点的圆形连接点。</div>
+            </div>
             <!-- 区域标注框 -->
             <!-- 预处理区 -->
             <div class="region-box region-pre-treatment" style="top: 126px; left: 110px; width: 783px; height: 142px;"></div>
@@ -1012,246 +1108,453 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 }}
             }}
 
-            // ===== 可拖动工艺单元与动态管线（仅作用于二维流程图） =====
-            const plantContainer = document.querySelector('.plant-container');
-            const layoutStorageKey = 'waterPlant2DLayoutV1';
+            // ===== 水厂工艺流程编辑器：自定义组件、拖动、连接、标注 =====
+            const editorStorageKey = 'waterPlantFlowEditorV2';
+            const editorContainer = document.querySelector('.plant-container');
+            const editorStatus = document.getElementById('flowEditorStatus');
+            const svgNS = 'http://www.w3.org/2000/svg';
+            let selectedEditorUnit = null;
+            let selectedConnectionId = null;
+            let pendingPort = null;
+            let editorState = {{ active: false, customUnits: [], removedBase: [], positions: {{}}, connections: [] }};
 
-            const processConnections = [
-                {{ from: '粗格栅', to: '提升泵房', type: 'water' }},
-                {{ from: '提升泵房', to: '细格栅', type: 'water' }},
-                {{ from: '细格栅', to: '曝气沉砂池', type: 'water' }},
-                {{ from: '曝气沉砂池', to: '膜格栅', type: 'water' }},
-                {{ from: '膜格栅', to: '厌氧池', type: 'water' }},
-                {{ from: '厌氧池', to: '缺氧池', type: 'water' }},
-                {{ from: '缺氧池', to: '好氧池', type: 'water' }},
-                {{ from: '好氧池', to: 'MBR膜池', type: 'water' }},
-                {{ from: 'MBR膜池', to: 'DF系统', type: 'water' }},
-                {{ from: 'DF系统', to: '催化氧化', type: 'water' }},
-                {{ from: '催化氧化', to: '消毒接触池', type: 'water' }},
-                {{ from: 'MBR膜池', to: '污泥处理车间', type: 'sludge' }},
-                {{ from: '鼓风机房', to: '好氧池', type: 'air' }},
-                {{ from: '鼓风机房', to: 'MBR膜池', type: 'air' }},
-                {{ from: '粗格栅', to: '除臭系统', type: 'gas' }},
-                {{ from: '细格栅', to: '除臭系统', type: 'gas' }},
-                {{ from: '曝气沉砂池', to: '除臭系统', type: 'gas' }},
-                {{ from: '膜格栅', to: '除臭系统', type: 'gas' }}
-            ];
-
-            const pipeStyles = {{
-                water: {{ color: '#1e90ff', width: 6, marker: 'waterArrow' }},
-                sludge: {{ color: '#8B4513', width: 5, marker: 'sludgeArrow' }},
-                gas: {{ color: '#A9A9A9', width: 4, marker: 'gasArrow' }},
-                air: {{ color: 'rgba(120, 120, 120, 0.8)', width: 4, marker: 'airArrow' }}
+            const connectionStyle = {{
+                water: {{ color: '#1e90ff', width: 6, marker: 'editorWaterArrow', name: '水流' }},
+                sludge: {{ color: '#8B4513', width: 5, marker: 'editorSludgeArrow', name: '污泥' }},
+                gas: {{ color: '#999999', width: 4, marker: 'editorGasArrow', name: '臭气' }},
+                air: {{ color: '#657786', width: 4, marker: 'editorAirArrow', name: '空气' }}
             }};
 
-            function findUnit(unitName) {{
-                return Array.from(document.querySelectorAll('.unit')).find(function(unit) {{
-                    const nameNode = unit.querySelector('.unit-name');
-                    return nameNode && nameNode.textContent.trim() === unitName;
+            function setEditorStatus(message) {{ editorStatus.textContent = message; }}
+
+            function unitIdByName(name) {{
+                const node = Array.from(document.querySelectorAll('.unit')).find(function(unit) {{
+                    const title = unit.querySelector('.unit-name');
+                    return title && title.textContent.trim() === name;
                 }});
+                return node ? node.dataset.editorId : null;
             }}
 
-            function createConnectionLayer() {{
-                const svgNS = 'http://www.w3.org/2000/svg';
+            function baseConnections() {{
+                const specs = [
+                    ['粗格栅', '提升泵房', 'water', '污水'],
+                    ['提升泵房', '细格栅', 'water', '污水'],
+                    ['细格栅', '曝气沉砂池', 'water', '污水'],
+                    ['曝气沉砂池', '膜格栅', 'water', '污水'],
+                    ['膜格栅', '厌氧池', 'water', '污水'],
+                    ['厌氧池', '缺氧池', 'water', '水流'],
+                    ['缺氧池', '好氧池', 'water', '水流'],
+                    ['好氧池', 'MBR膜池', 'water', '水流'],
+                    ['MBR膜池', 'DF系统', 'water', '水流'],
+                    ['DF系统', '催化氧化', 'water', '水流'],
+                    ['催化氧化', '消毒接触池', 'water', '出水'],
+                    ['MBR膜池', '污泥处理车间', 'sludge', '污泥 S5'],
+                    ['鼓风机房', '好氧池', 'air', '空气'],
+                    ['鼓风机房', 'MBR膜池', 'air', '空气'],
+                    ['粗格栅', '除臭系统', 'gas', '臭气 G1'],
+                    ['细格栅', '除臭系统', 'gas', '臭气 G2'],
+                    ['曝气沉砂池', '除臭系统', 'gas', '臭气 G3'],
+                    ['膜格栅', '除臭系统', 'gas', '臭气 G4']
+                ];
+                return specs.map(function(spec, index) {{
+                    return {{
+                        id: 'base-line-' + index,
+                        from: unitIdByName(spec[0]),
+                        to: unitIdByName(spec[1]),
+                        fromSide: 'auto',
+                        toSide: 'auto',
+                        type: spec[2],
+                        label: spec[3]
+                    }};
+                }}).filter(function(line) {{ return line.from && line.to; }});
+            }}
+
+            function createEditorLayer() {{
                 const svg = document.createElementNS(svgNS, 'svg');
                 svg.setAttribute('class', 'dynamic-connection-layer');
-
+                svg.setAttribute('id', 'dynamicConnectionLayer');
                 const defs = document.createElementNS(svgNS, 'defs');
                 [
-                    ['waterArrow', '#1e90ff'],
-                    ['sludgeArrow', '#8B4513'],
-                    ['gasArrow', '#A9A9A9'],
-                    ['airArrow', '#777777']
-                ].forEach(function(item) {{
+                    ['editorWaterArrow', '#1e90ff'],
+                    ['editorSludgeArrow', '#8B4513'],
+                    ['editorGasArrow', '#999999'],
+                    ['editorAirArrow', '#657786']
+                ].forEach(function(definition) {{
                     const marker = document.createElementNS(svgNS, 'marker');
-                    marker.setAttribute('id', item[0]);
+                    marker.setAttribute('id', definition[0]);
                     marker.setAttribute('markerWidth', '10');
                     marker.setAttribute('markerHeight', '10');
                     marker.setAttribute('refX', '8');
                     marker.setAttribute('refY', '3');
                     marker.setAttribute('orient', 'auto');
                     marker.setAttribute('markerUnits', 'strokeWidth');
-
                     const arrow = document.createElementNS(svgNS, 'path');
                     arrow.setAttribute('d', 'M0,0 L0,6 L9,3 z');
-                    arrow.setAttribute('fill', item[1]);
+                    arrow.setAttribute('fill', definition[1]);
                     marker.appendChild(arrow);
                     defs.appendChild(marker);
                 }});
-
                 svg.appendChild(defs);
-                plantContainer.insertBefore(svg, plantContainer.firstChild);
+                editorContainer.insertBefore(svg, editorContainer.firstChild);
                 return svg;
             }}
 
-            const connectionLayer = createConnectionLayer();
+            const editorLayer = createEditorLayer();
 
-            function relativeRect(node) {{
+            function activateEditor() {{
+                if (!editorState.active) {{
+                    editorState.active = true;
+                    if (!editorState.connections.length) editorState.connections = baseConnections();
+                }}
+                editorContainer.classList.add('editor-active');
+                renderConnections();
+            }}
+
+            function addPorts(unit) {{
+                if (unit.querySelector('.connection-port')) return;
+                ['top', 'right', 'bottom', 'left'].forEach(function(side) {{
+                    const port = document.createElement('button');
+                    port.type = 'button';
+                    port.className = 'connection-port';
+                    port.dataset.side = side;
+                    port.title = side + ' 连接点';
+                    port.addEventListener('pointerdown', function(event) {{ event.stopPropagation(); }});
+                    port.addEventListener('click', function(event) {{
+                        event.preventDefault();
+                        event.stopPropagation();
+                        handlePortClick(unit, port);
+                    }});
+                    unit.appendChild(port);
+                }});
+            }}
+
+            function selectEditorUnit(unit) {{
+                document.querySelectorAll('.unit.editor-selected').forEach(function(node) {{
+                    node.classList.remove('editor-selected');
+                }});
+                selectedConnectionId = null;
+                selectedEditorUnit = unit;
+                if (unit) unit.classList.add('editor-selected');
+                renderConnections();
+            }}
+
+            function handlePortClick(unit, port) {{
+                activateEditor();
+                selectEditorUnit(unit);
+                editorContainer.classList.add('connecting');
+                if (!pendingPort) {{
+                    pendingPort = {{ unitId: unit.dataset.editorId, side: port.dataset.side, element: port }};
+                    port.classList.add('pending');
+                    setEditorStatus('已选择起点，请点击另一个组件上的连接点。');
+                    return;
+                }}
+                if (pendingPort.unitId === unit.dataset.editorId) {{
+                    pendingPort.element.classList.remove('pending');
+                    pendingPort = null;
+                    setEditorStatus('起点已取消，请重新选择连接点。');
+                    return;
+                }}
+
+                const type = document.getElementById('newLineType').value;
+                const typedLabel = document.getElementById('newLineLabel').value.trim();
+                editorState.connections.push({{
+                    id: 'line-' + Date.now() + '-' + Math.random().toString(16).slice(2),
+                    from: pendingPort.unitId,
+                    to: unit.dataset.editorId,
+                    fromSide: pendingPort.side,
+                    toSide: port.dataset.side,
+                    type: type,
+                    label: typedLabel || connectionStyle[type].name
+                }});
+                pendingPort.element.classList.remove('pending');
+                pendingPort = null;
+                editorContainer.classList.remove('connecting');
+                document.getElementById('newLineLabel').value = '';
+                persistEditorState();
+                renderConnections();
+                setEditorStatus('连接已创建；拖动任一组件时，管线、箭头和标注会一起移动。');
+            }}
+
+            function relativeNodeRect(node) {{
                 const nodeRect = node.getBoundingClientRect();
-                const containerRect = plantContainer.getBoundingClientRect();
+                const parentRect = editorContainer.getBoundingClientRect();
                 return {{
-                    left: nodeRect.left - containerRect.left,
-                    top: nodeRect.top - containerRect.top,
-                    right: nodeRect.right - containerRect.left,
-                    bottom: nodeRect.bottom - containerRect.top,
-                    centerX: nodeRect.left - containerRect.left + nodeRect.width / 2,
-                    centerY: nodeRect.top - containerRect.top + nodeRect.height / 2
+                    left: nodeRect.left - parentRect.left,
+                    top: nodeRect.top - parentRect.top,
+                    right: nodeRect.right - parentRect.left,
+                    bottom: nodeRect.bottom - parentRect.top,
+                    centerX: nodeRect.left - parentRect.left + nodeRect.width / 2,
+                    centerY: nodeRect.top - parentRect.top + nodeRect.height / 2
                 }};
             }}
 
-            function connectionPoints(fromNode, toNode) {{
-                const from = relativeRect(fromNode);
-                const to = relativeRect(toNode);
-                const dx = to.centerX - from.centerX;
-                const dy = to.centerY - from.centerY;
-
-                if (Math.abs(dx) >= Math.abs(dy)) {{
-                    return dx >= 0
-                        ? {{ x1: from.right, y1: from.centerY, x2: to.left, y2: to.centerY }}
-                        : {{ x1: from.left, y1: from.centerY, x2: to.right, y2: to.centerY }};
+            function pointOnSide(rect, side, otherRect) {{
+                let resolvedSide = side;
+                if (!resolvedSide || resolvedSide === 'auto') {{
+                    const dx = otherRect.centerX - rect.centerX;
+                    const dy = otherRect.centerY - rect.centerY;
+                    resolvedSide = Math.abs(dx) >= Math.abs(dy)
+                        ? (dx >= 0 ? 'right' : 'left')
+                        : (dy >= 0 ? 'bottom' : 'top');
                 }}
-
-                return dy >= 0
-                    ? {{ x1: from.centerX, y1: from.bottom, x2: to.centerX, y2: to.top }}
-                    : {{ x1: from.centerX, y1: from.top, x2: to.centerX, y2: to.bottom }};
+                if (resolvedSide === 'top') return {{ x: rect.centerX, y: rect.top }};
+                if (resolvedSide === 'bottom') return {{ x: rect.centerX, y: rect.bottom }};
+                if (resolvedSide === 'left') return {{ x: rect.left, y: rect.centerY }};
+                return {{ x: rect.right, y: rect.centerY }};
             }}
 
-            function orthogonalPath(points) {{
-                const dx = Math.abs(points.x2 - points.x1);
-                const dy = Math.abs(points.y2 - points.y1);
+            function pipeGeometry(connection) {{
+                const fromNode = document.querySelector('[data-editor-id="' + connection.from + '"]');
+                const toNode = document.querySelector('[data-editor-id="' + connection.to + '"]');
+                if (!fromNode || !toNode) return null;
+                const fromRect = relativeNodeRect(fromNode);
+                const toRect = relativeNodeRect(toNode);
+                const start = pointOnSide(fromRect, connection.fromSide, toRect);
+                const end = pointOnSide(toRect, connection.toSide, fromRect);
+                const dx = Math.abs(end.x - start.x);
+                const dy = Math.abs(end.y - start.y);
+                let path;
                 if (dx >= dy) {{
-                    const middleX = (points.x1 + points.x2) / 2;
-                    return 'M ' + points.x1 + ' ' + points.y1 +
-                           ' H ' + middleX + ' V ' + points.y2 + ' H ' + points.x2;
+                    const middleX = (start.x + end.x) / 2;
+                    path = 'M ' + start.x + ' ' + start.y + ' H ' + middleX + ' V ' + end.y + ' H ' + end.x;
+                }} else {{
+                    const middleY = (start.y + end.y) / 2;
+                    path = 'M ' + start.x + ' ' + start.y + ' V ' + middleY + ' H ' + end.x + ' V ' + end.y;
                 }}
-                const middleY = (points.y1 + points.y2) / 2;
-                return 'M ' + points.x1 + ' ' + points.y1 +
-                       ' V ' + middleY + ' H ' + points.x2 + ' V ' + points.y2;
+                return {{ path: path, labelX: (start.x + end.x) / 2, labelY: (start.y + end.y) / 2 - 7 }};
             }}
 
-            function updateDynamicConnections() {{
-                connectionLayer.querySelectorAll('.dynamic-pipe').forEach(function(path) {{
-                    path.remove();
-                }});
+            function renderConnections() {{
+                editorLayer.querySelectorAll('.editor-line-item').forEach(function(node) {{ node.remove(); }});
+                if (!editorState.active) return;
+                editorState.connections.forEach(function(connection) {{
+                    const geometry = pipeGeometry(connection);
+                    if (!geometry) return;
+                    const style = connectionStyle[connection.type] || connectionStyle.water;
+                    const group = document.createElementNS(svgNS, 'g');
+                    group.setAttribute('class', 'editor-line-item');
 
-                if (!plantContainer.classList.contains('layout-edited')) return;
-
-                const svgNS = 'http://www.w3.org/2000/svg';
-                processConnections.forEach(function(connection) {{
-                    const fromNode = findUnit(connection.from);
-                    const toNode = findUnit(connection.to);
-                    if (!fromNode || !toNode) return;
-
-                    const style = pipeStyles[connection.type];
                     const path = document.createElementNS(svgNS, 'path');
-                    path.setAttribute('class', 'dynamic-pipe ' + connection.type);
-                    path.setAttribute('d', orthogonalPath(connectionPoints(fromNode, toNode)));
+                    path.setAttribute('class', 'dynamic-pipe' + (selectedConnectionId === connection.id ? ' selected' : ''));
+                    path.setAttribute('d', geometry.path);
                     path.setAttribute('stroke', style.color);
-                    path.setAttribute('stroke-width', String(style.width));
+                    path.setAttribute('stroke-width', selectedConnectionId === connection.id ? String(style.width + 3) : String(style.width));
                     path.setAttribute('marker-end', 'url(#' + style.marker + ')');
-                    connectionLayer.appendChild(path);
+                    path.addEventListener('click', function(event) {{
+                        event.stopPropagation();
+                        selectEditorUnit(null);
+                        selectedConnectionId = connection.id;
+                        renderConnections();
+                        setEditorStatus('已选择管线“' + (connection.label || style.name) + '”，可点击“删除所选”。');
+                    }});
+                    group.appendChild(path);
+
+                    if (connection.label) {{
+                        const label = document.createElementNS(svgNS, 'text');
+                        label.setAttribute('class', 'dynamic-label');
+                        label.setAttribute('x', geometry.labelX);
+                        label.setAttribute('y', geometry.labelY);
+                        label.setAttribute('text-anchor', 'middle');
+                        label.setAttribute('fill', style.color);
+                        label.textContent = connection.label;
+                        group.appendChild(label);
+                    }}
+                    editorLayer.appendChild(group);
                 }});
             }}
 
-            function saveUnitLayout() {{
-                const layout = {{}};
-                document.querySelectorAll('.unit').forEach(function(unit) {{
-                    const nameNode = unit.querySelector('.unit-name');
-                    if (!nameNode) return;
-                    layout[nameNode.textContent.trim()] = {{
+            function createCustomUnit(data) {{
+                const unit = document.createElement('div');
+                unit.className = 'unit ' + data.type;
+                unit.dataset.editorId = data.id;
+                unit.dataset.custom = 'true';
+                unit.style.left = data.left + 'px';
+                unit.style.top = data.top + 'px';
+                unit.style.width = (data.width || 90) + 'px';
+                unit.style.height = (data.height || 60) + 'px';
+                const name = document.createElement('div');
+                name.className = 'unit-name';
+                name.textContent = data.name;
+                const status = document.createElement('div');
+                status.className = 'unit-status';
+                status.textContent = '自定义';
+                unit.appendChild(name);
+                unit.appendChild(status);
+                editorContainer.appendChild(unit);
+                prepareUnit(unit);
+                return unit;
+            }}
+
+            function prepareUnit(unit) {{
+                addPorts(unit);
+                unit.addEventListener('click', function(event) {{
+                    if (event.target.classList.contains('connection-port')) return;
+                    selectEditorUnit(unit);
+                }});
+
+                let dragging = false;
+                let moved = false;
+                let offsetX = 0;
+                let offsetY = 0;
+                unit.addEventListener('pointerdown', function(event) {{
+                    if (event.target.classList.contains('connection-port')) return;
+                    if (event.button !== undefined && event.button !== 0) return;
+                    dragging = true;
+                    moved = false;
+                    const rect = unit.getBoundingClientRect();
+                    offsetX = event.clientX - rect.left;
+                    offsetY = event.clientY - rect.top;
+                    unit.classList.add('dragging');
+                    unit.setPointerCapture(event.pointerId);
+                }});
+                unit.addEventListener('pointermove', function(event) {{
+                    if (!dragging) return;
+                    const containerRect = editorContainer.getBoundingClientRect();
+                    let left = event.clientX - containerRect.left - offsetX;
+                    let top = event.clientY - containerRect.top - offsetY;
+                    left = Math.max(0, Math.min(left, editorContainer.clientWidth - unit.offsetWidth));
+                    top = Math.max(96, Math.min(top, editorContainer.clientHeight - unit.offsetHeight));
+                    if (Math.abs(left - (parseFloat(unit.style.left) || 0)) > 2 || Math.abs(top - (parseFloat(unit.style.top) || 0)) > 2) {{
+                        moved = true;
+                        activateEditor();
+                    }}
+                    unit.style.left = left + 'px';
+                    unit.style.top = top + 'px';
+                    renderConnections();
+                }});
+                function endDrag(event) {{
+                    if (!dragging) return;
+                    dragging = false;
+                    unit.classList.remove('dragging');
+                    if (unit.hasPointerCapture(event.pointerId)) unit.releasePointerCapture(event.pointerId);
+                    if (moved) {{
+                        persistEditorState();
+                        unit.dataset.justDragged = 'true';
+                        setTimeout(function() {{ delete unit.dataset.justDragged; }}, 150);
+                    }}
+                }}
+                unit.addEventListener('pointerup', endDrag);
+                unit.addEventListener('pointercancel', endDrag);
+                unit.addEventListener('click', function(event) {{
+                    if (unit.dataset.justDragged === 'true') {{
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                    }}
+                }}, true);
+            }}
+
+            function persistEditorState() {{
+                editorState.positions = {{}};
+                document.querySelectorAll('.unit[data-editor-id]').forEach(function(unit) {{
+                    editorState.positions[unit.dataset.editorId] = {{
                         left: parseFloat(unit.style.left) || 0,
                         top: parseFloat(unit.style.top) || 0
                     }};
                 }});
-                localStorage.setItem(layoutStorageKey, JSON.stringify(layout));
+                localStorage.setItem(editorStorageKey, JSON.stringify(editorState));
             }}
 
-            function restoreUnitLayout() {{
-                const saved = localStorage.getItem(layoutStorageKey);
+            function loadEditorState() {{
+                const saved = localStorage.getItem(editorStorageKey);
                 if (!saved) return;
-                try {{
-                    const layout = JSON.parse(saved);
-                    Object.keys(layout).forEach(function(name) {{
-                        const unit = findUnit(name);
-                        if (!unit) return;
-                        unit.style.left = layout[name].left + 'px';
-                        unit.style.top = layout[name].top + 'px';
-                    }});
-                    plantContainer.classList.add('layout-edited');
-                }} catch (error) {{
-                    localStorage.removeItem(layoutStorageKey);
+                try {{ editorState = JSON.parse(saved); }} catch (error) {{
+                    localStorage.removeItem(editorStorageKey);
+                    return;
                 }}
+                (editorState.removedBase || []).forEach(function(id) {{
+                    const node = document.querySelector('[data-editor-id="' + id + '"]');
+                    if (node) node.remove();
+                }});
+                (editorState.customUnits || []).forEach(createCustomUnit);
+                Object.keys(editorState.positions || {{}}).forEach(function(id) {{
+                    const node = document.querySelector('[data-editor-id="' + id + '"]');
+                    if (!node) return;
+                    node.style.left = editorState.positions[id].left + 'px';
+                    node.style.top = editorState.positions[id].top + 'px';
+                }});
+                if (editorState.active) editorContainer.classList.add('editor-active');
             }}
 
-            function enableUnitDragging() {{
-                document.querySelectorAll('.unit').forEach(function(unit) {{
-                    let dragging = false;
-                    let moved = false;
-                    let offsetX = 0;
-                    let offsetY = 0;
-
-                    unit.addEventListener('pointerdown', function(event) {{
-                        if (event.button !== undefined && event.button !== 0) return;
-                        dragging = true;
-                        moved = false;
-                        const rect = unit.getBoundingClientRect();
-                        offsetX = event.clientX - rect.left;
-                        offsetY = event.clientY - rect.top;
-                        unit.classList.add('dragging');
-                        unit.setPointerCapture(event.pointerId);
-                    }});
-
-                    unit.addEventListener('pointermove', function(event) {{
-                        if (!dragging) return;
-                        const containerRect = plantContainer.getBoundingClientRect();
-                        let left = event.clientX - containerRect.left - offsetX;
-                        let top = event.clientY - containerRect.top - offsetY;
-
-                        left = Math.max(0, Math.min(left, plantContainer.clientWidth - unit.offsetWidth));
-                        top = Math.max(0, Math.min(top, plantContainer.clientHeight - unit.offsetHeight));
-
-                        if (Math.abs(left - (parseFloat(unit.style.left) || 0)) > 2 ||
-                            Math.abs(top - (parseFloat(unit.style.top) || 0)) > 2) {{
-                            moved = true;
-                            plantContainer.classList.add('layout-edited');
-                        }}
-
-                        unit.style.left = left + 'px';
-                        unit.style.top = top + 'px';
-                        updateDynamicConnections();
-                    }});
-
-                    function finishDragging(event) {{
-                        if (!dragging) return;
-                        dragging = false;
-                        unit.classList.remove('dragging');
-                        if (unit.hasPointerCapture(event.pointerId)) {{
-                            unit.releasePointerCapture(event.pointerId);
-                        }}
-                        if (moved) {{
-                            saveUnitLayout();
-                            unit.dataset.justDragged = 'true';
-                            setTimeout(function() {{ delete unit.dataset.justDragged; }}, 150);
-                        }}
-                    }}
-
-                    unit.addEventListener('pointerup', finishDragging);
-                    unit.addEventListener('pointercancel', finishDragging);
-                    unit.addEventListener('click', function(event) {{
-                        if (unit.dataset.justDragged === 'true') {{
-                            event.preventDefault();
-                            event.stopImmediatePropagation();
-                        }}
-                    }}, true);
+            function initializeFlowEditor() {{
+                document.querySelectorAll('.unit').forEach(function(unit, index) {{
+                    if (!unit.dataset.editorId) unit.dataset.editorId = 'base-' + index;
+                    prepareUnit(unit);
                 }});
+                loadEditorState();
+                renderConnections();
+
+                document.getElementById('addUnitButton').addEventListener('click', function() {{
+                    const nameInput = document.getElementById('newUnitName');
+                    const name = nameInput.value.trim();
+                    if (!name) {{ setEditorStatus('请先填写新组件名称。'); nameInput.focus(); return; }}
+                    if (unitIdByName(name)) {{ setEditorStatus('组件名称已存在，请换一个名称。'); return; }}
+                    activateEditor();
+                    const data = {{
+                        id: 'custom-' + Date.now(),
+                        name: name,
+                        type: document.getElementById('newUnitType').value,
+                        left: 440 + (editorState.customUnits.length % 4) * 30,
+                        top: 300 + (editorState.customUnits.length % 5) * 35,
+                        width: 90,
+                        height: 60
+                    }};
+                    editorState.customUnits.push(data);
+                    const unit = createCustomUnit(data);
+                    selectEditorUnit(unit);
+                    nameInput.value = '';
+                    persistEditorState();
+                    renderConnections();
+                    setEditorStatus('已添加“' + name + '”。可拖动位置，或点击“连接组件”后从圆点建立管线。');
+                }});
+
+                document.getElementById('connectButton').addEventListener('click', function() {{
+                    activateEditor();
+                    if (pendingPort) {{ pendingPort.element.classList.remove('pending'); pendingPort = null; }}
+                    editorContainer.classList.toggle('connecting');
+                    setEditorStatus(editorContainer.classList.contains('connecting')
+                        ? '连接模式：请依次点击起点组件和终点组件上的圆形连接点。'
+                        : '已退出连接模式。');
+                }});
+
+                document.getElementById('deleteButton').addEventListener('click', function() {{
+                    activateEditor();
+                    if (selectedConnectionId) {{
+                        editorState.connections = editorState.connections.filter(function(line) {{ return line.id !== selectedConnectionId; }});
+                        selectedConnectionId = null;
+                        persistEditorState();
+                        renderConnections();
+                        setEditorStatus('所选管线及其标注已删除。');
+                        return;
+                    }}
+                    if (!selectedEditorUnit) {{ setEditorStatus('请先选择要删除的组件或管线。'); return; }}
+                    const id = selectedEditorUnit.dataset.editorId;
+                    if (selectedEditorUnit.dataset.custom === 'true') {{
+                        editorState.customUnits = editorState.customUnits.filter(function(item) {{ return item.id !== id; }});
+                    }} else {{
+                        editorState.removedBase.push(id);
+                    }}
+                    editorState.connections = editorState.connections.filter(function(line) {{ return line.from !== id && line.to !== id; }});
+                    selectedEditorUnit.remove();
+                    selectedEditorUnit = null;
+                    persistEditorState();
+                    renderConnections();
+                    setEditorStatus('组件及与它相连的管线、箭头和标注已删除。');
+                }});
+
+                document.getElementById('resetLayoutButton').addEventListener('click', function() {{
+                    localStorage.removeItem(editorStorageKey);
+                    window.location.reload();
+                }});
+
+                editorContainer.addEventListener('click', function(event) {{
+                    if (event.target === editorContainer) selectEditorUnit(null);
+                }});
+                window.addEventListener('resize', renderConnections);
             }}
 
             // 初始化选中单元
             document.addEventListener('DOMContentLoaded', function() {{
-                restoreUnitLayout();
-                enableUnitDragging();
-                updateDynamicConnections();
-
+                initializeFlowEditor();
                 const units = document.querySelectorAll('.unit');
                 units.forEach(unit => {{
                     if (unit.querySelector('.unit-name').textContent === "{selected_unit}") {{
@@ -1273,8 +1576,6 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 }}
                 animateParticles();
             }});
-
-            window.addEventListener('resize', updateDynamicConnections);
         </script>
     </body>
     </html>
