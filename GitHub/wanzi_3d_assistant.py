@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import base64
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -23,12 +23,18 @@ _wanzi_component = components.declare_component(
 )
 
 
-@st.cache_data(show_spinner=False)
-def _read_model_data_uri(path: str, modified_ns: int, size: int) -> str:
-    """将 GLB 缓存为 data URI，浏览器无需访问本地文件路径。"""
-    del modified_ns, size
-    encoded = base64.b64encode(Path(path).read_bytes()).decode("ascii")
-    return f"data:model/gltf-binary;base64,{encoded}"
+def _prepare_component_model(source: Path) -> str:
+    """把模型放入组件静态目录，避免用 Base64 传输大型 GLB。"""
+    target = FRONTEND_DIR / "wanzi_web.glb"
+    source_stat = source.stat()
+    needs_copy = (
+        not target.is_file()
+        or target.stat().st_size != source_stat.st_size
+        or target.stat().st_mtime_ns < source_stat.st_mtime_ns
+    )
+    if needs_copy:
+        shutil.copy2(source, target)
+    return target.name
 
 
 def _init_state() -> None:
@@ -129,16 +135,13 @@ def render_wanzi_3d_assistant(
         print(f"[Wanzi3D] 组件页面不存在：{FRONTEND_DIR / 'index.html'}")
         return
 
-    stat = path.stat()
-    model_uri = _read_model_data_uri(
-        str(path), stat.st_mtime_ns, stat.st_size
-    )
+    model_file = _prepare_component_model(path)
 
     event = _wanzi_component(
-        model_uri=model_uri,
+        model_file=model_file,
         messages=st.session_state.chat_messages,
         greeting="你好呀，我是烷仔！有什么污水处理问题都可以问我。",
-        key="wanzi_desktop_assistant_v3",
+        key="wanzi_desktop_assistant_v4",
         default=None,
     )
 

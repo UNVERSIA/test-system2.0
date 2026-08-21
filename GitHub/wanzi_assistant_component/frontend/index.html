@@ -37,7 +37,7 @@
     import {DRACOLoader} from 'three/addons/loaders/DRACOLoader.js';
     const FRAME={orb:{width:150,height:150},pet:{width:400,height:270},chat:{width:440,height:525}};
     const savedPosition=JSON.parse(localStorage.getItem('wanzi-position')||'null');
-    const state={stage:sessionStorage.getItem('wanzi-stage-v3')||'orb',args:null,renderers:[],sending:false,center:savedPosition};
+    const state={stage:sessionStorage.getItem('wanzi-stage-v4')||'orb',args:null,renderers:[],sending:false,center:savedPosition};
     const frame=window.frameElement;
     function post(type,extra={}){window.parent.postMessage({isStreamlitMessage:true,type,...extra},'*')}
     function emit(value){post('streamlit:setComponentValue',{value,dataType:'json'})}
@@ -47,16 +47,18 @@
       if(!state.center){state.center={x:window.parent.innerWidth-22-box.width/2,y:window.parent.innerHeight*.58}}
       const left=Math.max(0,Math.min(window.parent.innerWidth-box.width,state.center.x-box.width/2));
       const top=Math.max(0,Math.min(window.parent.innerHeight-box.height,state.center.y-box.height/2));
-      Object.assign(frame.style,{position:'fixed',width:box.width+'px',height:box.height+'px',left:left+'px',top:top+'px',right:'auto',bottom:'auto',transform:'none',border:'0',background:'transparent',zIndex:'2147483000',overflow:'visible'});
-      const wrapper=frame.parentElement;if(wrapper){wrapper.style.height='0';wrapper.style.minHeight='0';wrapper.style.margin='0';wrapper.style.padding='0'}
+      Object.assign(frame.style,{position:'fixed',width:box.width+'px',height:box.height+'px',left:left+'px',top:top+'px',right:'auto',bottom:'auto',transform:'none',border:'0',outline:'0',boxShadow:'none',background:'transparent',backgroundColor:'transparent',zIndex:'2147483000',overflow:'visible'});
+      frame.setAttribute('allowtransparency','true');
+      const wrapper=frame.parentElement;
+      if(wrapper){wrapper.style.height='0';wrapper.style.minHeight='0';wrapper.style.margin='0';wrapper.style.padding='0';wrapper.style.background='transparent';wrapper.style.backgroundColor='transparent';wrapper.style.border='0';wrapper.style.outline='0';wrapper.style.boxShadow='none'}
     }
     function rememberPosition(){if(!frame)return;const r=frame.getBoundingClientRect();state.center={x:r.left+r.width/2,y:r.top+r.height/2};localStorage.setItem('wanzi-position',JSON.stringify(state.center))}
-    function showStage(stage){state.stage=stage;sessionStorage.setItem('wanzi-stage-v3',stage);document.getElementById('orb').style.display=stage==='orb'?'block':'none';document.getElementById('petStage').style.display=stage==='pet'?'block':'none';document.getElementById('chatStage').style.display=stage==='chat'?'block':'none';frameBox(stage);setTimeout(resizeAll,30);if(stage==='chat')setTimeout(()=>document.getElementById('question').focus(),80)}
+    function showStage(stage){state.stage=stage;sessionStorage.setItem('wanzi-stage-v4',stage);document.getElementById('orb').style.display=stage==='orb'?'block':'none';document.getElementById('petStage').style.display=stage==='pet'?'block':'none';document.getElementById('chatStage').style.display=stage==='chat'?'block':'none';frameBox(stage);setTimeout(resizeAll,30);if(stage==='chat')setTimeout(()=>document.getElementById('question').focus(),80)}
     function createModel(host,mode){
       const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(28,1,.01,100);
       const renderer=new THREE.WebGLRenderer({alpha:true,antialias:true,powerPreference:'high-performance'});
       renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=THREE.SRGBColorSpace;
-      renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;host.appendChild(renderer.domElement);
+      renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;renderer.setClearColor(0x000000,0);renderer.setClearAlpha(0);renderer.domElement.style.background='transparent';host.appendChild(renderer.domElement);
       scene.add(new THREE.HemisphereLight(0xffffff,0x405071,2.7));
       const key=new THREE.DirectionalLight(0xffffff,3.3);key.position.set(3,5,4);scene.add(key);
       const rim=new THREE.DirectionalLight(0x7de3df,1.8);rim.position.set(-4,2,-3);scene.add(rim);
@@ -100,7 +102,7 @@
     const petModel=createModel(document.getElementById('petCanvas'),'pet'),chatModel=createModel(document.getElementById('chatPet'),'chat');
     function resizeAll(){state.renderers.forEach(item=>item.resize())}
     function renderMessages(messages){const host=document.getElementById('messages');host.textContent='';if(!messages?.length){const empty=document.createElement('div');empty.id='empty';empty.textContent='你好，我是烷仔。可以问我污水处理工艺、甲烷排放、减排建议或网站使用方法。';host.appendChild(empty)}else messages.forEach(message=>{const row=document.createElement('div');row.className='msg '+(message.role==='user'?'user':'assistant');const bubble=document.createElement('div');bubble.className='bubble';bubble.textContent=message.content||'';row.appendChild(bubble);host.appendChild(row)});host.scrollTop=host.scrollHeight;state.sending=false;document.getElementById('thinking').style.display='none';document.getElementById('send').disabled=false}
-    window.addEventListener('message',event=>{const data=event.data;if(!data?.isStreamlitMessage||data.type!=='streamlit:render')return;state.args=data.args||{};petModel.load(state.args.model_uri);chatModel.load(state.args.model_uri);renderMessages(state.args.messages||[]);showStage(state.stage)});
+    window.addEventListener('message',event=>{const data=event.data;if(!data?.isStreamlitMessage||data.type!=='streamlit:render')return;state.args=data.args||{};const modelUrl=new URL('./'+(state.args.model_file||'wanzi_web.glb'),window.location.href).href;petModel.load(modelUrl);chatModel.load(modelUrl);renderMessages(state.args.messages||[]);showStage(state.stage)});
     document.getElementById('backToOrb').addEventListener('click',event=>{event.stopPropagation();showStage('orb')});
     document.getElementById('closeChat').addEventListener('click',()=>showStage('pet'));
     document.getElementById('clear').addEventListener('click',()=>{if(confirm('确定清空当前对话吗？'))emit({type:'clear',id:eventId()})});
