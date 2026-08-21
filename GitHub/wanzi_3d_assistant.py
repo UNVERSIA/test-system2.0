@@ -138,7 +138,7 @@ def render_wanzi_3d_assistant(
         model_uri=model_uri,
         messages=st.session_state.chat_messages,
         greeting="你好呀，我是烷仔！有什么污水处理问题都可以问我。",
-        key="wanzi_desktop_assistant_v2",
+        key="wanzi_desktop_assistant_v3",
         default=None,
     )
 
