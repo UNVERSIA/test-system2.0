@@ -507,6 +507,52 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 justify-content: center;
                 align-items: center;
                 z-index: 10;
+                user-select: none;
+                touch-action: none;
+                cursor: grab;
+            }}
+
+            .unit.dragging {{
+                cursor: grabbing;
+                transition: none;
+                opacity: 0.92;
+                z-index: 100;
+            }}
+
+            /* 拖动过布局后，原来按固定坐标绘制的管线会隐藏，改由 SVG 实时连线。 */
+            .plant-container.layout-edited .flow-line,
+            .plant-container.layout-edited .water-flow,
+            .plant-container.layout-edited .gas-flow,
+            .plant-container.layout-edited .sludge-flow,
+            .plant-container.layout-edited .air-flow,
+            .plant-container.layout-edited .flow-arrow,
+            .plant-container.layout-edited .particle {{
+                display: none;
+            }}
+
+            .dynamic-connection-layer {{
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                overflow: visible;
+                pointer-events: none;
+                z-index: 5;
+            }}
+
+            .dynamic-pipe {{
+                fill: none;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }}
+
+            .dynamic-pipe.water {{
+                stroke-dasharray: 12 8;
+                animation: pipeFlow 1s linear infinite;
+            }}
+
+            @keyframes pipeFlow {{
+                to {{ stroke-dashoffset: -20; }}
             }}
 
             .unit:hover {{
@@ -966,8 +1012,246 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 }}
             }}
 
+            // ===== 可拖动工艺单元与动态管线（仅作用于二维流程图） =====
+            const plantContainer = document.querySelector('.plant-container');
+            const layoutStorageKey = 'waterPlant2DLayoutV1';
+
+            const processConnections = [
+                {{ from: '粗格栅', to: '提升泵房', type: 'water' }},
+                {{ from: '提升泵房', to: '细格栅', type: 'water' }},
+                {{ from: '细格栅', to: '曝气沉砂池', type: 'water' }},
+                {{ from: '曝气沉砂池', to: '膜格栅', type: 'water' }},
+                {{ from: '膜格栅', to: '厌氧池', type: 'water' }},
+                {{ from: '厌氧池', to: '缺氧池', type: 'water' }},
+                {{ from: '缺氧池', to: '好氧池', type: 'water' }},
+                {{ from: '好氧池', to: 'MBR膜池', type: 'water' }},
+                {{ from: 'MBR膜池', to: 'DF系统', type: 'water' }},
+                {{ from: 'DF系统', to: '催化氧化', type: 'water' }},
+                {{ from: '催化氧化', to: '消毒接触池', type: 'water' }},
+                {{ from: 'MBR膜池', to: '污泥处理车间', type: 'sludge' }},
+                {{ from: '鼓风机房', to: '好氧池', type: 'air' }},
+                {{ from: '鼓风机房', to: 'MBR膜池', type: 'air' }},
+                {{ from: '粗格栅', to: '除臭系统', type: 'gas' }},
+                {{ from: '细格栅', to: '除臭系统', type: 'gas' }},
+                {{ from: '曝气沉砂池', to: '除臭系统', type: 'gas' }},
+                {{ from: '膜格栅', to: '除臭系统', type: 'gas' }}
+            ];
+
+            const pipeStyles = {{
+                water: {{ color: '#1e90ff', width: 6, marker: 'waterArrow' }},
+                sludge: {{ color: '#8B4513', width: 5, marker: 'sludgeArrow' }},
+                gas: {{ color: '#A9A9A9', width: 4, marker: 'gasArrow' }},
+                air: {{ color: 'rgba(120, 120, 120, 0.8)', width: 4, marker: 'airArrow' }}
+            }};
+
+            function findUnit(unitName) {{
+                return Array.from(document.querySelectorAll('.unit')).find(function(unit) {{
+                    const nameNode = unit.querySelector('.unit-name');
+                    return nameNode && nameNode.textContent.trim() === unitName;
+                }});
+            }}
+
+            function createConnectionLayer() {{
+                const svgNS = 'http://www.w3.org/2000/svg';
+                const svg = document.createElementNS(svgNS, 'svg');
+                svg.setAttribute('class', 'dynamic-connection-layer');
+
+                const defs = document.createElementNS(svgNS, 'defs');
+                [
+                    ['waterArrow', '#1e90ff'],
+                    ['sludgeArrow', '#8B4513'],
+                    ['gasArrow', '#A9A9A9'],
+                    ['airArrow', '#777777']
+                ].forEach(function(item) {{
+                    const marker = document.createElementNS(svgNS, 'marker');
+                    marker.setAttribute('id', item[0]);
+                    marker.setAttribute('markerWidth', '10');
+                    marker.setAttribute('markerHeight', '10');
+                    marker.setAttribute('refX', '8');
+                    marker.setAttribute('refY', '3');
+                    marker.setAttribute('orient', 'auto');
+                    marker.setAttribute('markerUnits', 'strokeWidth');
+
+                    const arrow = document.createElementNS(svgNS, 'path');
+                    arrow.setAttribute('d', 'M0,0 L0,6 L9,3 z');
+                    arrow.setAttribute('fill', item[1]);
+                    marker.appendChild(arrow);
+                    defs.appendChild(marker);
+                }});
+
+                svg.appendChild(defs);
+                plantContainer.insertBefore(svg, plantContainer.firstChild);
+                return svg;
+            }}
+
+            const connectionLayer = createConnectionLayer();
+
+            function relativeRect(node) {{
+                const nodeRect = node.getBoundingClientRect();
+                const containerRect = plantContainer.getBoundingClientRect();
+                return {{
+                    left: nodeRect.left - containerRect.left,
+                    top: nodeRect.top - containerRect.top,
+                    right: nodeRect.right - containerRect.left,
+                    bottom: nodeRect.bottom - containerRect.top,
+                    centerX: nodeRect.left - containerRect.left + nodeRect.width / 2,
+                    centerY: nodeRect.top - containerRect.top + nodeRect.height / 2
+                }};
+            }}
+
+            function connectionPoints(fromNode, toNode) {{
+                const from = relativeRect(fromNode);
+                const to = relativeRect(toNode);
+                const dx = to.centerX - from.centerX;
+                const dy = to.centerY - from.centerY;
+
+                if (Math.abs(dx) >= Math.abs(dy)) {{
+                    return dx >= 0
+                        ? {{ x1: from.right, y1: from.centerY, x2: to.left, y2: to.centerY }}
+                        : {{ x1: from.left, y1: from.centerY, x2: to.right, y2: to.centerY }};
+                }}
+
+                return dy >= 0
+                    ? {{ x1: from.centerX, y1: from.bottom, x2: to.centerX, y2: to.top }}
+                    : {{ x1: from.centerX, y1: from.top, x2: to.centerX, y2: to.bottom }};
+            }}
+
+            function orthogonalPath(points) {{
+                const dx = Math.abs(points.x2 - points.x1);
+                const dy = Math.abs(points.y2 - points.y1);
+                if (dx >= dy) {{
+                    const middleX = (points.x1 + points.x2) / 2;
+                    return 'M ' + points.x1 + ' ' + points.y1 +
+                           ' H ' + middleX + ' V ' + points.y2 + ' H ' + points.x2;
+                }}
+                const middleY = (points.y1 + points.y2) / 2;
+                return 'M ' + points.x1 + ' ' + points.y1 +
+                       ' V ' + middleY + ' H ' + points.x2 + ' V ' + points.y2;
+            }}
+
+            function updateDynamicConnections() {{
+                connectionLayer.querySelectorAll('.dynamic-pipe').forEach(function(path) {{
+                    path.remove();
+                }});
+
+                if (!plantContainer.classList.contains('layout-edited')) return;
+
+                const svgNS = 'http://www.w3.org/2000/svg';
+                processConnections.forEach(function(connection) {{
+                    const fromNode = findUnit(connection.from);
+                    const toNode = findUnit(connection.to);
+                    if (!fromNode || !toNode) return;
+
+                    const style = pipeStyles[connection.type];
+                    const path = document.createElementNS(svgNS, 'path');
+                    path.setAttribute('class', 'dynamic-pipe ' + connection.type);
+                    path.setAttribute('d', orthogonalPath(connectionPoints(fromNode, toNode)));
+                    path.setAttribute('stroke', style.color);
+                    path.setAttribute('stroke-width', String(style.width));
+                    path.setAttribute('marker-end', 'url(#' + style.marker + ')');
+                    connectionLayer.appendChild(path);
+                }});
+            }}
+
+            function saveUnitLayout() {{
+                const layout = {{}};
+                document.querySelectorAll('.unit').forEach(function(unit) {{
+                    const nameNode = unit.querySelector('.unit-name');
+                    if (!nameNode) return;
+                    layout[nameNode.textContent.trim()] = {{
+                        left: parseFloat(unit.style.left) || 0,
+                        top: parseFloat(unit.style.top) || 0
+                    }};
+                }});
+                localStorage.setItem(layoutStorageKey, JSON.stringify(layout));
+            }}
+
+            function restoreUnitLayout() {{
+                const saved = localStorage.getItem(layoutStorageKey);
+                if (!saved) return;
+                try {{
+                    const layout = JSON.parse(saved);
+                    Object.keys(layout).forEach(function(name) {{
+                        const unit = findUnit(name);
+                        if (!unit) return;
+                        unit.style.left = layout[name].left + 'px';
+                        unit.style.top = layout[name].top + 'px';
+                    }});
+                    plantContainer.classList.add('layout-edited');
+                }} catch (error) {{
+                    localStorage.removeItem(layoutStorageKey);
+                }}
+            }}
+
+            function enableUnitDragging() {{
+                document.querySelectorAll('.unit').forEach(function(unit) {{
+                    let dragging = false;
+                    let moved = false;
+                    let offsetX = 0;
+                    let offsetY = 0;
+
+                    unit.addEventListener('pointerdown', function(event) {{
+                        if (event.button !== undefined && event.button !== 0) return;
+                        dragging = true;
+                        moved = false;
+                        const rect = unit.getBoundingClientRect();
+                        offsetX = event.clientX - rect.left;
+                        offsetY = event.clientY - rect.top;
+                        unit.classList.add('dragging');
+                        unit.setPointerCapture(event.pointerId);
+                    }});
+
+                    unit.addEventListener('pointermove', function(event) {{
+                        if (!dragging) return;
+                        const containerRect = plantContainer.getBoundingClientRect();
+                        let left = event.clientX - containerRect.left - offsetX;
+                        let top = event.clientY - containerRect.top - offsetY;
+
+                        left = Math.max(0, Math.min(left, plantContainer.clientWidth - unit.offsetWidth));
+                        top = Math.max(0, Math.min(top, plantContainer.clientHeight - unit.offsetHeight));
+
+                        if (Math.abs(left - (parseFloat(unit.style.left) || 0)) > 2 ||
+                            Math.abs(top - (parseFloat(unit.style.top) || 0)) > 2) {{
+                            moved = true;
+                            plantContainer.classList.add('layout-edited');
+                        }}
+
+                        unit.style.left = left + 'px';
+                        unit.style.top = top + 'px';
+                        updateDynamicConnections();
+                    }});
+
+                    function finishDragging(event) {{
+                        if (!dragging) return;
+                        dragging = false;
+                        unit.classList.remove('dragging');
+                        if (unit.hasPointerCapture(event.pointerId)) {{
+                            unit.releasePointerCapture(event.pointerId);
+                        }}
+                        if (moved) {{
+                            saveUnitLayout();
+                            unit.dataset.justDragged = 'true';
+                            setTimeout(function() {{ delete unit.dataset.justDragged; }}, 150);
+                        }}
+                    }}
+
+                    unit.addEventListener('pointerup', finishDragging);
+                    unit.addEventListener('pointercancel', finishDragging);
+                    unit.addEventListener('click', function(event) {{
+                        if (unit.dataset.justDragged === 'true') {{
+                            event.preventDefault();
+                            event.stopImmediatePropagation();
+                        }}
+                    }}, true);
+                }});
+            }}
+
             // 初始化选中单元
             document.addEventListener('DOMContentLoaded', function() {{
+                restoreUnitLayout();
+                enableUnitDragging();
+                updateDynamicConnections();
+
                 const units = document.querySelectorAll('.unit');
                 units.forEach(unit => {{
                     if (unit.querySelector('.unit-name').textContent === "{selected_unit}") {{
@@ -989,6 +1273,8 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 }}
                 animateParticles();
             }});
+
+            window.addEventListener('resize', updateDynamicConnections);
         </script>
     </body>
     </html>
