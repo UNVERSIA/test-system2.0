@@ -15,15 +15,6 @@ from PIL import Image
 import plotly.graph_objects as go
 from streamlit.components.v1 import html
 
-# 全局悬浮烷仔为增强功能；加载失败时不影响原系统。
-try:
-    from wanzi_3d_assistant import render_wanzi_3d_assistant
-    WANZI_3D_AVAILABLE = True
-except Exception as wanzi_import_error:
-    render_wanzi_3d_assistant = None
-    WANZI_3D_AVAILABLE = False
-    print(f"悬浮烷仔模块加载失败: {wanzi_import_error}")
-
 # 添加当前目录到系统路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -588,6 +579,11 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
             }}
 
             .flow-editor-toolbar input {{ width: 115px; }}
+            .flow-editor-toolbar input[type="color"] {{
+                width: 48px;
+                padding: 2px;
+                cursor: pointer;
+            }}
             .flow-editor-toolbar button {{
                 background: #0878c9;
                 color: white;
@@ -679,6 +675,7 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
             .plant-container.editor-active .flow-label,
             .plant-container.editor-active .special-flow-label,
             .plant-container.editor-active .particle {{ display: none; }}
+            .plant-container.canvas-cleared .info-panel {{ display: none; }}
 
             .unit:hover {{
                 transform: scale(1.05);
@@ -901,16 +898,12 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 <input id="newLineLabel" type="text" maxlength="20" placeholder="管线标注（可选）">
                 <button id="connectButton" type="button" class="secondary">连接组件</button>
                 <button id="deleteButton" type="button" class="danger">删除所选</button>
+                <button id="clearCanvasButton" type="button" class="danger">清空画布</button>
                 <button id="resetLayoutButton" type="button" class="secondary">恢复原始流程</button>
                 <div class="region-editor-controls">
                     <input id="regionNameInput" type="text" maxlength="20" placeholder="分区名称">
-                    <select id="regionTypeSelect" title="分区颜色">
-                        <option value="region-pre-treatment">蓝色分区</option>
-                        <option value="region-bio-treatment">绿色分区</option>
-                        <option value="region-advanced-treatment">红色分区</option>
-                        <option value="region-sludge-treatment">橙色分区</option>
-                        <option value="region-effluent-area">青色分区</option>
-                    </select>
+                    <label for="regionColorInput">分区颜色</label>
+                    <input id="regionColorInput" type="color" value="#3498db" title="选择任意分区颜色">
                     <button id="addRegionButton" type="button">＋ 添加分区</button>
                     <button id="renameRegionButton" type="button" class="secondary">修改分区文字</button>
                     <button id="deleteRegionButton" type="button" class="danger">删除分区</button>
@@ -1191,7 +1184,8 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 connections: [],
                 customRegions: [],
                 removedBaseRegions: [],
-                regions: {{}}
+                regions: {{}},
+                canvasCleared: false
             }};
 
             const connectionStyle = {{
@@ -1258,14 +1252,14 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 ].forEach(function(definition) {{
                     const marker = document.createElementNS(svgNS, 'marker');
                     marker.setAttribute('id', definition[0]);
-                    marker.setAttribute('markerWidth', '8');
-                    marker.setAttribute('markerHeight', '8');
-                    marker.setAttribute('refX', '7');
-                    marker.setAttribute('refY', '4');
+                    marker.setAttribute('markerWidth', '12');
+                    marker.setAttribute('markerHeight', '12');
+                    marker.setAttribute('refX', '10');
+                    marker.setAttribute('refY', '6');
                     marker.setAttribute('orient', 'auto');
                     marker.setAttribute('markerUnits', 'userSpaceOnUse');
                     const arrow = document.createElementNS(svgNS, 'path');
-                    arrow.setAttribute('d', 'M0,0 L0,8 L8,4 z');
+                    arrow.setAttribute('d', 'M0,0 L0,12 L11,6 z');
                     arrow.setAttribute('fill', definition[1]);
                     marker.appendChild(arrow);
                     defs.appendChild(marker);
@@ -1283,6 +1277,7 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                     if (!editorState.connections.length) editorState.connections = baseConnections();
                 }}
                 editorContainer.classList.add('editor-active');
+                if (editorState.canvasCleared) editorContainer.classList.add('canvas-cleared');
                 renderConnections();
             }}
 
@@ -1490,11 +1485,23 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 renderConnections();
             }}
 
+            function hexToRgba(hex, alpha) {{
+                const normalized = (hex || '#3498db').replace('#', '');
+                const value = parseInt(normalized, 16);
+                const red = (value >> 16) & 255;
+                const green = (value >> 8) & 255;
+                const blue = value & 255;
+                return 'rgba(' + red + ',' + green + ',' + blue + ',' + alpha + ')';
+            }}
+
             function createRegion(data) {{
                 const region = document.createElement('div');
-                region.className = 'region-box ' + data.type;
+                region.className = 'region-box';
                 region.dataset.regionId = data.id;
                 region.dataset.customRegion = 'true';
+                region.dataset.regionColor = data.color || '#3498db';
+                region.style.borderColor = region.dataset.regionColor;
+                region.style.backgroundColor = hexToRgba(region.dataset.regionColor, 0.30);
                 region.style.left = data.left + 'px';
                 region.style.top = data.top + 'px';
                 region.style.width = data.width + 'px';
@@ -1680,7 +1687,8 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                         top: parseFloat(region.style.top) || 0,
                         width: parseFloat(region.style.width) || region.offsetWidth,
                         height: parseFloat(region.style.height) || region.offsetHeight,
-                        name: label ? label.textContent.trim() : ''
+                        name: label ? label.textContent.trim() : '',
+                        color: region.dataset.regionColor || ''
                     }};
                 }});
                 localStorage.setItem(editorStorageKey, JSON.stringify(editorState));
@@ -1693,6 +1701,14 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                     localStorage.removeItem(editorStorageKey);
                     return;
                 }}
+                editorState.customUnits = editorState.customUnits || [];
+                editorState.removedBase = editorState.removedBase || [];
+                editorState.positions = editorState.positions || {{}};
+                editorState.connections = editorState.connections || [];
+                editorState.customRegions = editorState.customRegions || [];
+                editorState.removedBaseRegions = editorState.removedBaseRegions || [];
+                editorState.regions = editorState.regions || {{}};
+                editorState.canvasCleared = Boolean(editorState.canvasCleared);
                 (editorState.removedBase || []).forEach(function(id) {{
                     const node = document.querySelector('[data-editor-id="' + id + '"]');
                     if (node) node.remove();
@@ -1719,11 +1735,17 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                     region.style.top = data.top + 'px';
                     region.style.width = data.width + 'px';
                     region.style.height = data.height + 'px';
+                    if (data.color) {{
+                        region.dataset.regionColor = data.color;
+                        region.style.borderColor = data.color;
+                        region.style.backgroundColor = hexToRgba(data.color, 0.30);
+                    }}
                     const label = regionLabel(region);
                     if (label) label.textContent = data.name;
                     syncRegionLabel(region);
                 }});
                 if (editorState.active) editorContainer.classList.add('editor-active');
+                if (editorState.canvasCleared) editorContainer.classList.add('canvas-cleared');
             }}
 
             function initializeFlowEditor() {{
@@ -1799,6 +1821,37 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                     window.location.reload();
                 }});
 
+                document.getElementById('clearCanvasButton').addEventListener('click', function() {{
+                    const baseUnitIds = Array.from(document.querySelectorAll('.unit[data-editor-id]:not([data-custom="true"])'))
+                        .map(function(unit) {{ return unit.dataset.editorId; }});
+                    const baseRegionIds = Array.from(document.querySelectorAll('.region-box[data-region-id]:not([data-custom-region="true"])'))
+                        .map(function(region) {{ return region.dataset.regionId; }});
+
+                    editorState.active = true;
+                    editorState.canvasCleared = true;
+                    editorState.customUnits = [];
+                    editorState.customRegions = [];
+                    editorState.removedBase = Array.from(new Set((editorState.removedBase || []).concat(baseUnitIds)));
+                    editorState.removedBaseRegions = Array.from(new Set((editorState.removedBaseRegions || []).concat(baseRegionIds)));
+                    editorState.positions = {{}};
+                    editorState.regions = {{}};
+                    editorState.connections = [];
+
+                    document.querySelectorAll('.unit').forEach(function(unit) {{ unit.remove(); }});
+                    document.querySelectorAll('.region-box').forEach(function(region) {{ region.remove(); }});
+                    document.querySelectorAll('.region-label').forEach(function(label) {{ label.remove(); }});
+                    if (pendingPort && pendingPort.element) pendingPort.element.classList.remove('pending');
+                    pendingPort = null;
+                    selectedEditorUnit = null;
+                    selectedEditorRegion = null;
+                    selectedConnectionId = null;
+                    editorContainer.classList.add('editor-active', 'canvas-cleared');
+                    editorContainer.classList.remove('connecting');
+                    persistEditorState();
+                    renderConnections();
+                    setEditorStatus('画布已清空。你可以从零添加组件和分区；点击“恢复原始流程”可找回原图。');
+                }});
+
                 document.getElementById('addRegionButton').addEventListener('click', function() {{
                     const nameInput = document.getElementById('regionNameInput');
                     const name = nameInput.value.trim();
@@ -1807,7 +1860,7 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                     const data = {{
                         id: 'custom-region-' + Date.now(),
                         name: name,
-                        type: document.getElementById('regionTypeSelect').value,
+                        color: document.getElementById('regionColorInput').value,
                         left: 180 + (editorState.customRegions.length % 4) * 55,
                         top: 300 + (editorState.customRegions.length % 4) * 45,
                         width: 230,
@@ -3781,13 +3834,6 @@ with tab9:
 
         请联系系统管理员解决此问题。
         """)
-
-if WANZI_3D_AVAILABLE and render_wanzi_3d_assistant is not None:
-    try:
-        render_wanzi_3d_assistant()
-    except Exception as wanzi_render_error:
-        # 3D悬浮助手是可选增强，任何错误都不能中断原页面。
-        print(f"悬浮烷仔渲染失败: {wanzi_render_error}")
 
 # 运行应用
 if __name__ == "__main__":
