@@ -898,6 +898,8 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                     <option value="effluent-area">出水设施</option>
                 </select>
                 <button id="addUnitButton" type="button">＋ 添加组件</button>
+                <input id="customUnitStatus" type="text" maxlength="20" placeholder="组件说明文字">
+                <button id="editUnitStatusButton" type="button" class="secondary">修改说明文字</button>
                 <select id="newLineType" title="管线类型">
                     <option value="water">水流</option>
                     <option value="sludge">污泥</option>
@@ -1318,7 +1320,13 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 selectedEditorRegion = null;
                 selectedConnectionId = null;
                 selectedEditorUnit = unit;
-                if (unit) unit.classList.add('editor-selected');
+                if (unit) {{
+                    unit.classList.add('editor-selected');
+                    if (unit.dataset.custom === 'true') {{
+                        const statusNode = unit.querySelector('.unit-status');
+                        document.getElementById('customUnitStatus').value = statusNode ? statusNode.textContent.trim() : '';
+                    }}
+                }}
                 renderConnections();
             }}
 
@@ -1461,7 +1469,7 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 name.textContent = data.name;
                 const status = document.createElement('div');
                 status.className = 'unit-status';
-                status.textContent = '自定义';
+                status.textContent = data.status || '自定义';
                 unit.appendChild(name);
                 unit.appendChild(status);
                 editorContainer.appendChild(unit);
@@ -1777,6 +1785,7 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                         id: 'custom-' + Date.now(),
                         name: name,
                         type: document.getElementById('newUnitType').value,
+                        status: document.getElementById('customUnitStatus').value.trim() || '自定义',
                         left: 440 + (editorState.customUnits.length % 4) * 30,
                         top: 300 + (editorState.customUnits.length % 5) * 35,
                         width: 90,
@@ -1786,9 +1795,35 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                     const unit = createCustomUnit(data);
                     selectEditorUnit(unit);
                     nameInput.value = '';
+                    document.getElementById('customUnitStatus').value = '';
                     persistEditorState();
                     renderConnections();
                     setEditorStatus('已添加“' + name + '”。可拖动位置，或点击“连接组件”后从圆点建立管线。');
+                }});
+
+                document.getElementById('editUnitStatusButton').addEventListener('click', function() {{
+                    if (!selectedEditorUnit || selectedEditorUnit.dataset.custom !== 'true') {{
+                        setEditorStatus('请先选择一个自定义组件。');
+                        return;
+                    }}
+                    const statusInput = document.getElementById('customUnitStatus');
+                    const newStatus = statusInput.value.trim();
+                    if (!newStatus) {{
+                        setEditorStatus('组件说明文字不能为空。');
+                        statusInput.focus();
+                        return;
+                    }}
+                    const customData = editorState.customUnits.find(function(item) {{
+                        return item.id === selectedEditorUnit.dataset.editorId;
+                    }});
+                    if (!customData) {{
+                        setEditorStatus('没有找到该自定义组件的数据，请重新选择后再试。');
+                        return;
+                    }}
+                    customData.status = newStatus;
+                    selectedEditorUnit.querySelector('.unit-status').textContent = newStatus;
+                    persistEditorState();
+                    setEditorStatus('组件说明文字已修改为“' + newStatus + '”。');
                 }});
 
                 document.getElementById('connectButton').addEventListener('click', function() {{
