@@ -14,7 +14,7 @@ import streamlit as st
 from streamlit.components.v1 import html
 
 # 导入Coze API
-from coze_api import get_coze_client, CozeAPI, MockCozeAPI
+from coze_api import get_coze_client, CozeAPI
 
 
 # ============== 3D数字人HTML/CSS/JS ==============
@@ -405,48 +405,29 @@ class ChatHistoryManager:
 # ============== 数字人助手页面 ==============
 
 def init_session_state():
-    """初始化Session State"""
-    if 'chat_messages' not in st.session_state:
+    """初始化数字人助手状态。"""
+
+    if "chat_messages" not in st.session_state:
         st.session_state.chat_messages = []
-    if 'coze_client' not in st.session_state:
+
+    if "coze_client" not in st.session_state:
         st.session_state.coze_client = None
-    if 'chat_history_manager' not in st.session_state:
-        st.session_state.chat_history_manager = ChatHistoryManager()
-    if 'is_speaking' not in st.session_state:
+
+    if "chat_history_manager" not in st.session_state:
+        st.session_state.chat_history_manager = (
+            ChatHistoryManager()
+        )
+
+    if "is_speaking" not in st.session_state:
         st.session_state.is_speaking = False
-    if 'use_mock_api' not in st.session_state:
-        st.session_state.use_mock_api = True  # 默认使用模拟模式
-    
-    # 尝试从配置文件加载 Coze API 凭证
-    if 'coze_api_key' not in st.session_state or not st.session_state.coze_api_key:
-        try:
-            import json
-            import os
-            config_path = "coze_config.json"
-            if os.path.exists(config_path):
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                    st.session_state.coze_api_key = config.get('pat', '')
-                    st.session_state.coze_bot_id = config.get('bot_id', '')
-                    # 如果有配置，默认关闭模拟模式
-                    if st.session_state.coze_api_key and st.session_state.coze_bot_id:
-                        st.session_state.use_mock_api = False
-        except Exception as e:
-            print(f"加载Coze配置文件失败: {e}")
 
 
 def get_coze_client_instance():
-    """获取或创建Coze客户端实例"""
+    """获取当前访问者的 Coze 客户端。"""
+
     if st.session_state.coze_client is None:
-        api_key = st.session_state.get('coze_api_key', '')
-        bot_id = st.session_state.get('coze_bot_id', '')
-        use_mock = st.session_state.get('use_mock_api', True)
-        
-        st.session_state.coze_client = get_coze_client(
-            use_mock=use_mock,
-            api_key=api_key,
-            bot_id=bot_id
-        )
+        st.session_state.coze_client = get_coze_client()
+
     return st.session_state.coze_client
 
 
@@ -512,81 +493,56 @@ def render_chat_interface():
 
 
 def render_settings_panel():
-    """渲染设置面板"""
+    """渲染数字人助手设置。"""
+
     with st.sidebar:
         st.header("🔧 数字人助手设置")
-        
-        # API模式选择
-        st.subheader("API模式")
-        use_mock = st.toggle("使用模拟模式（无需API密钥）", value=st.session_state.use_mock_api)
-        
-        if use_mock != st.session_state.use_mock_api:
-            st.session_state.use_mock_api = use_mock
-            st.session_state.coze_client = None  # 重置客户端
-            st.rerun()
-        
-        if not use_mock:
-            st.info("使用真实Coze API需要配置以下信息：")
-            
-            # API密钥输入
-            api_key = st.text_input(
-                "Coze API密钥 (PAT)",
-                value=st.session_state.get('coze_api_key', ''),
-                type="password",
-                help="在Coze平台获取Personal Access Token (以pat_开头)"
-            )
-            
-            bot_id = st.text_input(
-                "Bot ID",
-                value=st.session_state.get('coze_bot_id', ''),
-                help="你的Coze智能体ID (19位数字)"
-            )
-            
-            if api_key:
-                st.session_state.coze_api_key = api_key
-            if bot_id:
-                st.session_state.coze_bot_id = bot_id
-            
-            # 验证按钮
-            if st.button("验证API凭证"):
-                if api_key and bot_id:
-                    client = get_coze_client(use_mock=False, api_key=api_key, bot_id=bot_id)
-                    result = client.validate_credentials()
-                    
-                    if result['valid']:
-                        st.success(result['message'])
-                        st.session_state.coze_client = client
-                        st.session_state.use_mock_api = False
-                    else:
-                        st.error(result['message'])
-                        st.info("提示: 请确认Bot已发布，且PAT有正确的权限")
+        st.success("当前使用真实 Coze 智能体")
+
+        if st.button("🔌 测试 Coze 连接"):
+            try:
+                client = get_coze_client_instance()
+                result = client.validate_credentials()
+
+                if result["valid"]:
+                    st.success(result["message"])
                 else:
-                    st.warning("请输入API密钥和Bot ID")
-            
-            # 显示当前配置状态
-            if st.session_state.get('coze_api_key') and st.session_state.get('coze_bot_id'):
-                st.caption(f"当前配置: Bot ID = {st.session_state.coze_bot_id[:10]}...")
-        
+                    st.error(result["message"])
+
+            except Exception as exc:
+                st.error(f"连接失败：{exc}")
+
         st.divider()
-        
-        # 历史对话管理
         st.subheader("📚 历史对话")
-        
+
         if st.button("🗑️ 清空当前对话"):
             st.session_state.chat_messages = []
             st.session_state.chat_history_manager.clear_history()
-            st.success("对话已清空！")
+
+            if st.session_state.coze_client is not None:
+                st.session_state.coze_client.reset_session()
+
+            st.success("对话已清空")
             st.rerun()
-        
+
         if st.button("📥 导出历史对话"):
-            filename = st.session_state.chat_history_manager.export_history()
+            filename = (
+                st.session_state
+                .chat_history_manager
+                .export_history()
+            )
+
             if filename:
-                st.success(f"历史对话已导出到: {filename}")
+                st.success(f"历史对话已导出到：{filename}")
             else:
                 st.error("导出失败")
-        
-        # 显示历史对话数量
-        history_count = len(st.session_state.chat_history_manager.get_history())
+
+        history_count = len(
+            st.session_state
+            .chat_history_manager
+            .get_history()
+        )
+
         st.caption(f"已保存 {history_count} 条对话记录")
 
 
