@@ -553,7 +553,7 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 top: 8px;
                 left: 10px;
                 right: 10px;
-                min-height: 78px;
+                min-height: 104px;
                 padding: 8px 10px;
                 display: flex;
                 flex-wrap: wrap;
@@ -588,6 +588,49 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
             .flow-editor-toolbar button.secondary {{ background: #607d8b; border-color: #607d8b; }}
             .flow-editor-toolbar button.danger {{ background: #d64545; border-color: #d64545; }}
             .flow-editor-status {{ flex-basis: 100%; color: #345; line-height: 18px; }}
+
+            .region-editor-controls {{
+                flex-basis: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 7px;
+                padding-top: 3px;
+                border-top: 1px dashed #c4d2dc;
+            }}
+
+            .region-box.editor-region-selected {{
+                opacity: 0.48;
+                outline: 3px solid #FFD700;
+                outline-offset: 2px;
+                z-index: 4;
+            }}
+
+            .region-box.editor-draggable {{
+                cursor: move;
+                user-select: none;
+                touch-action: none;
+            }}
+
+            .region-resize-handle {{
+                position: absolute;
+                right: -1px;
+                bottom: -1px;
+                width: 15px;
+                height: 15px;
+                display: none;
+                border-left: 3px solid rgba(0,0,0,0.55);
+                border-top: 3px solid rgba(0,0,0,0.55);
+                cursor: nwse-resize;
+                z-index: 20;
+            }}
+
+            .region-box.editor-region-selected .region-resize-handle {{ display: block; }}
+
+            .region-label.editor-region-label {{
+                cursor: text;
+                z-index: 5;
+            }}
 
             .dynamic-connection-layer {{
                 position: absolute;
@@ -850,6 +893,19 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 <button id="connectButton" type="button" class="secondary">连接组件</button>
                 <button id="deleteButton" type="button" class="danger">删除所选</button>
                 <button id="resetLayoutButton" type="button" class="secondary">恢复原始流程</button>
+                <div class="region-editor-controls">
+                    <input id="regionNameInput" type="text" maxlength="20" placeholder="分区名称">
+                    <select id="regionTypeSelect" title="分区颜色">
+                        <option value="region-pre-treatment">蓝色分区</option>
+                        <option value="region-bio-treatment">绿色分区</option>
+                        <option value="region-advanced-treatment">红色分区</option>
+                        <option value="region-sludge-treatment">橙色分区</option>
+                        <option value="region-effluent-area">青色分区</option>
+                    </select>
+                    <button id="addRegionButton" type="button">＋ 添加分区</button>
+                    <button id="renameRegionButton" type="button" class="secondary">修改分区文字</button>
+                    <button id="deleteRegionButton" type="button" class="danger">删除分区</button>
+                </div>
                 <div class="flow-editor-status" id="flowEditorStatus">可直接拖动现有组件；连接时先点击“连接组件”，再点击起点和终点的圆形连接点。</div>
             </div>
             <!-- 区域标注框 -->
@@ -1109,14 +1165,25 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
             }}
 
             // ===== 水厂工艺流程编辑器：自定义组件、拖动、连接、标注 =====
-            const editorStorageKey = 'waterPlantFlowEditorV2';
+            const editorStorageKey = 'waterPlantFlowEditorV3';
+            const diagramTopOffset = 84;
             const editorContainer = document.querySelector('.plant-container');
             const editorStatus = document.getElementById('flowEditorStatus');
             const svgNS = 'http://www.w3.org/2000/svg';
             let selectedEditorUnit = null;
+            let selectedEditorRegion = null;
             let selectedConnectionId = null;
             let pendingPort = null;
-            let editorState = {{ active: false, customUnits: [], removedBase: [], positions: {{}}, connections: [] }};
+            let editorState = {{
+                active: false,
+                customUnits: [],
+                removedBase: [],
+                positions: {{}},
+                connections: [],
+                customRegions: [],
+                removedBaseRegions: [],
+                regions: {{}}
+            }};
 
             const connectionStyle = {{
                 water: {{ color: '#1e90ff', width: 6, marker: 'editorWaterArrow', name: '水流' }},
@@ -1182,14 +1249,14 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 ].forEach(function(definition) {{
                     const marker = document.createElementNS(svgNS, 'marker');
                     marker.setAttribute('id', definition[0]);
-                    marker.setAttribute('markerWidth', '10');
-                    marker.setAttribute('markerHeight', '10');
-                    marker.setAttribute('refX', '8');
-                    marker.setAttribute('refY', '3');
+                    marker.setAttribute('markerWidth', '8');
+                    marker.setAttribute('markerHeight', '8');
+                    marker.setAttribute('refX', '7');
+                    marker.setAttribute('refY', '4');
                     marker.setAttribute('orient', 'auto');
-                    marker.setAttribute('markerUnits', 'strokeWidth');
+                    marker.setAttribute('markerUnits', 'userSpaceOnUse');
                     const arrow = document.createElementNS(svgNS, 'path');
-                    arrow.setAttribute('d', 'M0,0 L0,6 L9,3 z');
+                    arrow.setAttribute('d', 'M0,0 L0,8 L8,4 z');
                     arrow.setAttribute('fill', definition[1]);
                     marker.appendChild(arrow);
                     defs.appendChild(marker);
@@ -1232,6 +1299,10 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 document.querySelectorAll('.unit.editor-selected').forEach(function(node) {{
                     node.classList.remove('editor-selected');
                 }});
+                document.querySelectorAll('.region-box.editor-region-selected').forEach(function(node) {{
+                    node.classList.remove('editor-region-selected');
+                }});
+                selectedEditorRegion = null;
                 selectedConnectionId = null;
                 selectedEditorUnit = unit;
                 if (unit) unit.classList.add('editor-selected');
@@ -1385,6 +1456,147 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                 return unit;
             }}
 
+            function regionLabel(region) {{
+                return document.querySelector('[data-region-label-for="' + region.dataset.regionId + '"]');
+            }}
+
+            function syncRegionLabel(region) {{
+                const label = regionLabel(region);
+                if (!label) return;
+                label.style.left = ((parseFloat(region.style.left) || 0) + 10) + 'px';
+                label.style.top = ((parseFloat(region.style.top) || 0) + 7) + 'px';
+            }}
+
+            function selectEditorRegion(region) {{
+                document.querySelectorAll('.unit.editor-selected').forEach(function(node) {{ node.classList.remove('editor-selected'); }});
+                document.querySelectorAll('.region-box.editor-region-selected').forEach(function(node) {{ node.classList.remove('editor-region-selected'); }});
+                selectedEditorUnit = null;
+                selectedConnectionId = null;
+                selectedEditorRegion = region;
+                if (region) {{
+                    region.classList.add('editor-region-selected');
+                    const label = regionLabel(region);
+                    document.getElementById('regionNameInput').value = label ? label.textContent.trim() : '';
+                }}
+                renderConnections();
+            }}
+
+            function createRegion(data) {{
+                const region = document.createElement('div');
+                region.className = 'region-box ' + data.type;
+                region.dataset.regionId = data.id;
+                region.dataset.customRegion = 'true';
+                region.style.left = data.left + 'px';
+                region.style.top = data.top + 'px';
+                region.style.width = data.width + 'px';
+                region.style.height = data.height + 'px';
+                const handle = document.createElement('span');
+                handle.className = 'region-resize-handle';
+                region.appendChild(handle);
+
+                const label = document.createElement('div');
+                label.className = 'region-label editor-region-label';
+                label.dataset.regionLabelFor = data.id;
+                label.textContent = data.name;
+                editorContainer.appendChild(region);
+                editorContainer.appendChild(label);
+                syncRegionLabel(region);
+                prepareRegion(region);
+                return region;
+            }}
+
+            function prepareRegion(region) {{
+                region.classList.add('editor-draggable');
+                let handle = region.querySelector('.region-resize-handle');
+                if (!handle) {{
+                    handle = document.createElement('span');
+                    handle.className = 'region-resize-handle';
+                    region.appendChild(handle);
+                }}
+                const label = regionLabel(region);
+                if (label) {{
+                    label.classList.add('editor-region-label');
+                    label.addEventListener('click', function(event) {{ event.stopPropagation(); selectEditorRegion(region); }});
+                    label.addEventListener('dblclick', function(event) {{
+                        event.stopPropagation();
+                        selectEditorRegion(region);
+                        document.getElementById('regionNameInput').focus();
+                        setEditorStatus('请在“分区名称”中修改文字，再点击“修改分区文字”。');
+                    }});
+                }}
+                region.addEventListener('click', function(event) {{ event.stopPropagation(); selectEditorRegion(region); }});
+
+                let action = null;
+                let startX = 0;
+                let startY = 0;
+                let startLeft = 0;
+                let startTop = 0;
+                let startWidth = 0;
+                let startHeight = 0;
+                region.addEventListener('pointerdown', function(event) {{
+                    if (event.button !== undefined && event.button !== 0) return;
+                    action = event.target.classList.contains('region-resize-handle') ? 'resize' : 'move';
+                    startX = event.clientX;
+                    startY = event.clientY;
+                    startLeft = parseFloat(region.style.left) || 0;
+                    startTop = parseFloat(region.style.top) || 0;
+                    startWidth = region.offsetWidth;
+                    startHeight = region.offsetHeight;
+                    selectEditorRegion(region);
+                    region.setPointerCapture(event.pointerId);
+                    event.preventDefault();
+                }});
+                region.addEventListener('pointermove', function(event) {{
+                    if (!action) return;
+                    activateEditor();
+                    const dx = event.clientX - startX;
+                    const dy = event.clientY - startY;
+                    if (action === 'resize') {{
+                        region.style.width = Math.max(100, startWidth + dx) + 'px';
+                        region.style.height = Math.max(70, startHeight + dy) + 'px';
+                    }} else {{
+                        const maxLeft = editorContainer.clientWidth - region.offsetWidth;
+                        const maxTop = editorContainer.clientHeight - region.offsetHeight;
+                        region.style.left = Math.max(0, Math.min(startLeft + dx, maxLeft)) + 'px';
+                        region.style.top = Math.max(145, Math.min(startTop + dy, maxTop)) + 'px';
+                        syncRegionLabel(region);
+                    }}
+                }});
+                function finishRegionAction(event) {{
+                    if (!action) return;
+                    action = null;
+                    if (region.hasPointerCapture(event.pointerId)) region.releasePointerCapture(event.pointerId);
+                    persistEditorState();
+                }}
+                region.addEventListener('pointerup', finishRegionAction);
+                region.addEventListener('pointercancel', finishRegionAction);
+            }}
+
+            function shiftOriginalDiagramBelowToolbar() {{
+                const movableSelectors = [
+                    '.region-box', '.region-label', '.unit', '.flow-line', '.water-flow',
+                    '.gas-flow', '.sludge-flow', '.air-flow', '.flow-arrow', '.flow-label',
+                    '.special-flow-label', '.particle', '.bio-deodorization'
+                ];
+                editorContainer.querySelectorAll(movableSelectors.join(',')).forEach(function(node) {{
+                    if (node.dataset.toolbarShifted === 'true') return;
+                    const top = parseFloat(node.style.top);
+                    if (!Number.isNaN(top)) node.style.top = (top + diagramTopOffset) + 'px';
+                    node.dataset.toolbarShifted = 'true';
+                }});
+            }}
+
+            function initializeBaseRegions() {{
+                const boxes = Array.from(editorContainer.querySelectorAll('.region-box'));
+                const labels = Array.from(editorContainer.querySelectorAll('.region-label'));
+                boxes.forEach(function(region, index) {{
+                    region.dataset.regionId = 'base-region-' + index;
+                    const label = labels[index];
+                    if (label) label.dataset.regionLabelFor = region.dataset.regionId;
+                    prepareRegion(region);
+                }});
+            }}
+
             function prepareUnit(unit) {{
                 addPorts(unit);
                 unit.addEventListener('click', function(event) {{
@@ -1413,7 +1625,7 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                     let left = event.clientX - containerRect.left - offsetX;
                     let top = event.clientY - containerRect.top - offsetY;
                     left = Math.max(0, Math.min(left, editorContainer.clientWidth - unit.offsetWidth));
-                    top = Math.max(96, Math.min(top, editorContainer.clientHeight - unit.offsetHeight));
+                    top = Math.max(145, Math.min(top, editorContainer.clientHeight - unit.offsetHeight));
                     if (Math.abs(left - (parseFloat(unit.style.left) || 0)) > 2 || Math.abs(top - (parseFloat(unit.style.top) || 0)) > 2) {{
                         moved = true;
                         activateEditor();
@@ -1451,6 +1663,17 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                         top: parseFloat(unit.style.top) || 0
                     }};
                 }});
+                editorState.regions = {{}};
+                document.querySelectorAll('.region-box[data-region-id]').forEach(function(region) {{
+                    const label = regionLabel(region);
+                    editorState.regions[region.dataset.regionId] = {{
+                        left: parseFloat(region.style.left) || 0,
+                        top: parseFloat(region.style.top) || 0,
+                        width: parseFloat(region.style.width) || region.offsetWidth,
+                        height: parseFloat(region.style.height) || region.offsetHeight,
+                        name: label ? label.textContent.trim() : ''
+                    }};
+                }});
                 localStorage.setItem(editorStorageKey, JSON.stringify(editorState));
             }}
 
@@ -1466,20 +1689,41 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                     if (node) node.remove();
                 }});
                 (editorState.customUnits || []).forEach(createCustomUnit);
+                (editorState.removedBaseRegions || []).forEach(function(id) {{
+                    const region = document.querySelector('[data-region-id="' + id + '"]');
+                    const label = document.querySelector('[data-region-label-for="' + id + '"]');
+                    if (region) region.remove();
+                    if (label) label.remove();
+                }});
+                (editorState.customRegions || []).forEach(createRegion);
                 Object.keys(editorState.positions || {{}}).forEach(function(id) {{
                     const node = document.querySelector('[data-editor-id="' + id + '"]');
                     if (!node) return;
                     node.style.left = editorState.positions[id].left + 'px';
                     node.style.top = editorState.positions[id].top + 'px';
                 }});
+                Object.keys(editorState.regions || {{}}).forEach(function(id) {{
+                    const region = document.querySelector('[data-region-id="' + id + '"]');
+                    if (!region) return;
+                    const data = editorState.regions[id];
+                    region.style.left = data.left + 'px';
+                    region.style.top = data.top + 'px';
+                    region.style.width = data.width + 'px';
+                    region.style.height = data.height + 'px';
+                    const label = regionLabel(region);
+                    if (label) label.textContent = data.name;
+                    syncRegionLabel(region);
+                }});
                 if (editorState.active) editorContainer.classList.add('editor-active');
             }}
 
             function initializeFlowEditor() {{
+                shiftOriginalDiagramBelowToolbar();
                 document.querySelectorAll('.unit').forEach(function(unit, index) {{
                     if (!unit.dataset.editorId) unit.dataset.editorId = 'base-' + index;
                     prepareUnit(unit);
                 }});
+                initializeBaseRegions();
                 loadEditorState();
                 renderConnections();
 
@@ -1546,8 +1790,58 @@ def create_plant_diagram(selected_unit=None, flow_position=0, flow_rate=10000, a
                     window.location.reload();
                 }});
 
+                document.getElementById('addRegionButton').addEventListener('click', function() {{
+                    const nameInput = document.getElementById('regionNameInput');
+                    const name = nameInput.value.trim();
+                    if (!name) {{ setEditorStatus('请先填写分区名称。'); nameInput.focus(); return; }}
+                    activateEditor();
+                    const data = {{
+                        id: 'custom-region-' + Date.now(),
+                        name: name,
+                        type: document.getElementById('regionTypeSelect').value,
+                        left: 180 + (editorState.customRegions.length % 4) * 55,
+                        top: 300 + (editorState.customRegions.length % 4) * 45,
+                        width: 230,
+                        height: 135
+                    }};
+                    editorState.customRegions.push(data);
+                    const region = createRegion(data);
+                    selectEditorRegion(region);
+                    nameInput.value = '';
+                    persistEditorState();
+                    setEditorStatus('已添加分区“' + name + '”。拖动分区空白处可移动，拖动右下角可改变大小。');
+                }});
+
+                document.getElementById('renameRegionButton').addEventListener('click', function() {{
+                    if (!selectedEditorRegion) {{ setEditorStatus('请先点击要修改的分区或分区标题。'); return; }}
+                    const name = document.getElementById('regionNameInput').value.trim();
+                    if (!name) {{ setEditorStatus('分区名称不能为空。'); return; }}
+                    activateEditor();
+                    const label = regionLabel(selectedEditorRegion);
+                    if (label) label.textContent = name;
+                    persistEditorState();
+                    setEditorStatus('分区文字已修改为“' + name + '”。');
+                }});
+
+                document.getElementById('deleteRegionButton').addEventListener('click', function() {{
+                    if (!selectedEditorRegion) {{ setEditorStatus('请先选择要删除的分区。'); return; }}
+                    activateEditor();
+                    const id = selectedEditorRegion.dataset.regionId;
+                    const label = regionLabel(selectedEditorRegion);
+                    if (selectedEditorRegion.dataset.customRegion === 'true') {{
+                        editorState.customRegions = editorState.customRegions.filter(function(item) {{ return item.id !== id; }});
+                    }} else if (!editorState.removedBaseRegions.includes(id)) {{
+                        editorState.removedBaseRegions.push(id);
+                    }}
+                    selectedEditorRegion.remove();
+                    if (label) label.remove();
+                    selectedEditorRegion = null;
+                    persistEditorState();
+                    setEditorStatus('所选分区及其文字已删除；分区内的工艺组件不会被删除。');
+                }});
+
                 editorContainer.addEventListener('click', function(event) {{
-                    if (event.target === editorContainer) selectEditorUnit(null);
+                    if (event.target === editorContainer) {{ selectEditorUnit(null); selectEditorRegion(null); }}
                 }});
                 window.addEventListener('resize', renderConnections);
             }}
