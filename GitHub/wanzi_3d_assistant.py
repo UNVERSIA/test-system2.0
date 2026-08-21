@@ -279,3 +279,4 @@ def render_wanzi_3d_assistant(model_path: str | Path = DEFAULT_MODEL_PATH) -> No
     stat = path.stat()
     model_uri = _model_data_uri(str(path), stat.st_mtime_ns, stat.st_size)
     html(_build_html(model_uri), height=1, scrolling=False)
+
