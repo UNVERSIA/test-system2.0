@@ -295,5 +295,10 @@ def get_coze_client(
     api_key: Optional[str] = None,
     bot_id: Optional[str] = None,
 ) -> CozeAPI:
-ck、api_key 和 bot_id 不再使用。
+    """
+    返回真实 Coze 客户端。
+
+    use_mock、api_key 和 bot_id
+    仅为兼容原有调用签名而保留。
+    """
     return CozeAPI()
