@@ -15,6 +15,15 @@ from PIL import Image
 import plotly.graph_objects as go
 from streamlit.components.v1 import html
 
+# 全局悬浮烷仔为增强功能；加载失败时不影响原系统。
+try:
+    from wanzi_3d_assistant import render_wanzi_3d_assistant
+    WANZI_3D_AVAILABLE = True
+except Exception as wanzi_import_error:
+    render_wanzi_3d_assistant = None
+    WANZI_3D_AVAILABLE = False
+    print(f"悬浮烷仔模块加载失败: {wanzi_import_error}")
+
 # 添加当前目录到系统路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -3772,6 +3781,13 @@ with tab9:
 
         请联系系统管理员解决此问题。
         """)
+
+if WANZI_3D_AVAILABLE and render_wanzi_3d_assistant is not None:
+    try:
+        render_wanzi_3d_assistant()
+    except Exception as wanzi_render_error:
+        # 3D悬浮助手是可选增强，任何错误都不能中断原页面。
+        print(f"悬浮烷仔渲染失败: {wanzi_render_error}")
 
 # 运行应用
 if __name__ == "__main__":
