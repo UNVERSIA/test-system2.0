@@ -8,7 +8,7 @@
     window.__wanziRenderQueue = [];
     window.addEventListener('message', function (event) {
       var data = event.data;
-      if (data && data.isStreamlitMessage && data.type === 'streamlit:render') {
+      if (data && data.type === 'streamlit:render') {
         window.__wanziRenderQueue.push(data);
       }
     });
@@ -118,7 +118,7 @@
     function resizeAll(){state.renderers.forEach(item=>item.resize())}
     function renderMessages(messages){const host=document.getElementById('messages');host.textContent='';if(!messages?.length){const empty=document.createElement('div');empty.id='empty';empty.textContent='你好，我是烷仔。可以问我污水处理工艺、甲烷排放、减排建议或网站使用方法。';host.appendChild(empty)}else messages.forEach(message=>{const row=document.createElement('div');row.className='msg '+(message.role==='user'?'user':'assistant');const bubble=document.createElement('div');bubble.className='bubble';bubble.textContent=message.content||'';row.appendChild(bubble);host.appendChild(row)});host.scrollTop=host.scrollHeight;state.sending=false;document.getElementById('thinking').style.display='none';document.getElementById('send').disabled=false}
     function handleStreamlitRender(data){
-      if(!data?.isStreamlitMessage||data.type!=='streamlit:render')return;
+      if(!data||data.type!=='streamlit:render')return;
       state.args=data.args||{};
       const modelUrl=new URL('./'+(state.args.model_file||'wanzi_web.glb'),window.location.href).href;
       petModel.load(modelUrl);chatModel.load(modelUrl);renderMessages(state.args.messages||[]);showStage(state.stage);
