@@ -3,6 +3,21 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script>
+    // 必须在 Three.js 模块下载前监听。否则 Streamlit 首次 render 消息会被漏掉。
+    window.__wanziRenderQueue = [];
+    window.addEventListener('message', function (event) {
+      var data = event.data;
+      if (data && data.isStreamlitMessage && data.type === 'streamlit:render') {
+        window.__wanziRenderQueue.push(data);
+      }
+    });
+    window.parent.postMessage({
+      isStreamlitMessage: true,
+      type: 'streamlit:componentReady',
+      apiVersion: 1
+    }, '*');
+  </script>
   <script type="importmap">
   {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
   </script>
@@ -102,7 +117,15 @@
     const petModel=createModel(document.getElementById('petCanvas'),'pet'),chatModel=createModel(document.getElementById('chatPet'),'chat');
     function resizeAll(){state.renderers.forEach(item=>item.resize())}
     function renderMessages(messages){const host=document.getElementById('messages');host.textContent='';if(!messages?.length){const empty=document.createElement('div');empty.id='empty';empty.textContent='你好，我是烷仔。可以问我污水处理工艺、甲烷排放、减排建议或网站使用方法。';host.appendChild(empty)}else messages.forEach(message=>{const row=document.createElement('div');row.className='msg '+(message.role==='user'?'user':'assistant');const bubble=document.createElement('div');bubble.className='bubble';bubble.textContent=message.content||'';row.appendChild(bubble);host.appendChild(row)});host.scrollTop=host.scrollHeight;state.sending=false;document.getElementById('thinking').style.display='none';document.getElementById('send').disabled=false}
-    window.addEventListener('message',event=>{const data=event.data;if(!data?.isStreamlitMessage||data.type!=='streamlit:render')return;state.args=data.args||{};const modelUrl=new URL('./'+(state.args.model_file||'wanzi_web.glb'),window.location.href).href;petModel.load(modelUrl);chatModel.load(modelUrl);renderMessages(state.args.messages||[]);showStage(state.stage)});
+    function handleStreamlitRender(data){
+      if(!data?.isStreamlitMessage||data.type!=='streamlit:render')return;
+      state.args=data.args||{};
+      const modelUrl=new URL('./'+(state.args.model_file||'wanzi_web.glb'),window.location.href).href;
+      petModel.load(modelUrl);chatModel.load(modelUrl);renderMessages(state.args.messages||[]);showStage(state.stage);
+    }
+    window.addEventListener('message',event=>handleStreamlitRender(event.data));
+    (window.__wanziRenderQueue||[]).forEach(handleStreamlitRender);
+    window.__wanziRenderQueue=[];
     document.getElementById('backToOrb').addEventListener('click',event=>{event.stopPropagation();showStage('orb')});
     document.getElementById('closeChat').addEventListener('click',()=>showStage('pet'));
     document.getElementById('clear').addEventListener('click',()=>{if(confirm('确定清空当前对话吗？'))emit({type:'clear',id:eventId()})});
@@ -140,8 +163,6 @@
     pet.addEventListener('pointerleave',()=>petModel.look(0,0,false));
     document.getElementById('composer').addEventListener('submit',event=>{event.preventDefault();const input=document.getElementById('question'),text=input.value.trim();if(!text||state.sending)return;state.sending=true;input.value='';document.getElementById('thinking').style.display='block';document.getElementById('send').disabled=true;emit({type:'send',id:eventId(),text})});
     window.addEventListener('resize',()=>{resizeAll();frameBox(state.stage)});showStage(state.stage);
-    // 必须在所有 render 监听器注册完成后再通知 Streamlit，避免漏掉第一次模型参数。
-    post('streamlit:componentReady',{apiVersion:1});
   </script>
 </body>
 </html>
