@@ -109,93 +109,93 @@ class CozeAPI:
         """开始一段新对话。"""
         self.session_id = self._create_session_id()
 
-def chat(
-    self,
-    message: str,
-    stream: bool = False,
-    conversation_id: Optional[str] = None,
-) -> Dict:
-    message = message.strip()
-
-    if not message:
-        return {
-            "success": False,
-            "response": "请输入问题。",
-            "conversation_id": self.session_id,
-            "error": "empty_message",
-        }
-
-    if conversation_id:
-        self.session_id = conversation_id
-
-    beijing_now = datetime.now(
-        ZoneInfo("Asia/Shanghai")
-    )
-
-    weekday_names = [
-        "星期一",
-        "星期二",
-        "星期三",
-        "星期四",
-        "星期五",
-        "星期六",
-        "星期日",
-    ]
-
-    current_time_text = (
-        f"{beijing_now.year}年"
-        f"{beijing_now.month}月"
-        f"{beijing_now.day}日 "
-        f"{weekday_names[beijing_now.weekday()]} "
-        f"{beijing_now.strftime('%H:%M:%S')}"
-    )
-
-    request_message = f"""
-【系统运行信息】
-
-当前北京时间：{current_time_text}
-
-【网站信息】
-
-{WEBSITE_CONTEXT}
-
-【回答规则】
-
-1. 日期、星期和时间问题必须根据当前北京时间回答。
-2. 网站相关问题必须根据网站信息回答。
-3. 不要说自己无法获得当前日期。
-4. 不要编造系统不存在的功能。
-
-【用户问题】
-
-{message}
-""".strip()
-
-    headers = {
-        "Authorization": f"Bearer {self.api_token}",
-        "Content-Type": "application/json",
-        "Accept": "text/event-stream",
-    }
-
-    payload = {
-        "content": {
-            "query": {
-                "prompt": [
-                    {
-                        "type": "text",
-                        "content": {
-                            "text": request_message
-                        },
-                    }
-                ]
+    def chat(
+        self,
+        message: str,
+        stream: bool = False,
+        conversation_id: Optional[str] = None,
+    ) -> Dict:
+        message = message.strip()
+    
+        if not message:
+            return {
+                "success": False,
+                "response": "请输入问题。",
+                "conversation_id": self.session_id,
+                "error": "empty_message",
             }
-        },
-        "type": "query",
-        "session_id": self.session_id,
-        "project_id": int(self.project_id),
-    }
-
-    # 后面的 requests 和 SSE 解析代码保持不变
+    
+        if conversation_id:
+            self.session_id = conversation_id
+    
+        beijing_now = datetime.now(
+            ZoneInfo("Asia/Shanghai")
+        )
+    
+        weekday_names = [
+            "星期一",
+            "星期二",
+            "星期三",
+            "星期四",
+            "星期五",
+            "星期六",
+            "星期日",
+        ]
+    
+        current_time_text = (
+            f"{beijing_now.year}年"
+            f"{beijing_now.month}月"
+            f"{beijing_now.day}日 "
+            f"{weekday_names[beijing_now.weekday()]} "
+            f"{beijing_now.strftime('%H:%M:%S')}"
+        )
+    
+        request_message = f"""
+    【系统运行信息】
+    
+    当前北京时间：{current_time_text}
+    
+    【网站信息】
+    
+    {WEBSITE_CONTEXT}
+    
+    【回答规则】
+    
+    1. 日期、星期和时间问题必须根据当前北京时间回答。
+    2. 网站相关问题必须根据网站信息回答。
+    3. 不要说自己无法获得当前日期。
+    4. 不要编造系统不存在的功能。
+    
+    【用户问题】
+    
+    {message}
+    """.strip()
+    
+        headers = {
+            "Authorization": f"Bearer {self.api_token}",
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream",
+        }
+    
+        payload = {
+            "content": {
+                "query": {
+                    "prompt": [
+                        {
+                            "type": "text",
+                            "content": {
+                                "text": request_message
+                            },
+                        }
+                    ]
+                }
+            },
+            "type": "query",
+            "session_id": self.session_id,
+            "project_id": int(self.project_id),
+        }
+    
+        # 后面的 requests 和 SSE 解析代码保持不变
 
         answer_parts = []
         error_message = ""
