@@ -171,7 +171,9 @@ class SimulationEngine:
         self._record_history(self.state)
 
     def _flow_capacity_factor(self, unit_id: str, equipment_loads: dict[str, float]) -> float:
-        flow_types = {"pump", "reflux", "mbr_suction"}
+        # Reflux equipment changes an internal recycle stream and must not cap
+        # the main water-line throughput in the V1 conservation model.
+        flow_types = {"pump", "mbr_suction"}
         candidates = [load for equipment_id, load in equipment_loads.items() if self._equipment_config[equipment_id].type in flow_types]
         return max(candidates, default=1.0)
 
