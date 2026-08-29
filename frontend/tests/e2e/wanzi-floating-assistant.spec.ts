@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test'
-import path from 'node:path'
 
 const routes = ['/3d', '/process', '/footprint', '/account', '/optimization', '/prediction', '/technology', '/factors', '/assistant', '/game']
 
@@ -88,10 +87,8 @@ for (const viewport of [{ width: 1920, height: 1080 }, { width: 1366, height: 76
     expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height)
     await expect(page.locator('.main-sidebar')).toBeVisible()
     await expect(page.locator('.topbar')).toBeVisible()
-    await expect(page.locator('.settings-drawer')).toBeVisible()
+    await expect(page.locator('.vp-control-panel')).toBeVisible()
+    await expect(page.locator('.vp-detail-panel')).toBeVisible()
     await page.getByRole('button', { name: '收回悬浮球' }).click()
-    await page.screenshot({
-      path: path.resolve('../docs/migration/m1', `new-global-layout-${viewport.width === 1920 ? '1920' : '1366'}.png`),
-    })
   })
 }
