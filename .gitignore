@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 .env
 data/*.db
+backend/data/*.db
 data/simulated_data*.csv
 temp_factors.csv
 work/
