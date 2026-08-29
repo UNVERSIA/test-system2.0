@@ -26,6 +26,24 @@ from data_simulator import DataSimulator
 from factor_database import CarbonFactorDatabase
 from optimization_engine import OptimizationEngine
 from .data_adapter import detect_and_convert_data
+from .simulation import SimulationEngine
+from .simulation.schemas import (
+    ActionResponse as SimulationActionResponse,
+    AlarmState as SimulationAlarmState,
+    EquipmentUpdateRequest,
+    FormulaRecord,
+    HistoryPoint,
+    PlantConfig,
+    PlantState,
+    ScenarioDefinition,
+    ScenarioRequest as SimulationScenarioRequest,
+    SnapshotRequest,
+    SnapshotResponse,
+    SnapshotRestoreRequest,
+    SpeedRequest,
+    StepRequest,
+    UnitDetailResponse,
+)
 
 CarbonLSTMPredictor = None
 TENSORFLOW_AVAILABLE = False
@@ -60,6 +78,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http
 
 calculator = CarbonCalculator()
 factor_db = CarbonFactorDatabase(str(ROOT / "data" / "carbon_factors.db"))
+virtual_plant = SimulationEngine()
 
 
 class RecordsRequest(BaseModel):
@@ -399,3 +418,102 @@ def game_next():
 @app.post("/api/game/undo")
 def game_undo():
     return {"undone": True, "state": game_state_get()}
+
+
+# Virtual Plant V1. Routes are intentionally thin: all state transitions live
+# in app.simulation.SimulationEngine rather than API handlers.
+@app.get("/api/virtual-plant/config", response_model=PlantConfig)
+def virtual_plant_config():
+    return virtual_plant.config
+
+
+@app.get("/api/virtual-plant/state", response_model=PlantState)
+def virtual_plant_state():
+    return virtual_plant.current_state()
+
+
+@app.get("/api/virtual-plant/history/{unit_id}", response_model=list[HistoryPoint])
+def virtual_plant_history(unit_id: str, limit: int = 240):
+    try:
+        return virtual_plant.history(unit_id, min(max(limit, 1), 1000))
+    except KeyError:
+        raise HTTPException(404, "工艺单元不存在")
+
+
+@app.get("/api/virtual-plant/units/{unit_id}", response_model=UnitDetailResponse)
+def virtual_plant_unit(unit_id: str):
+    try:
+        return virtual_plant.unit_detail(unit_id)
+    except KeyError:
+        raise HTTPException(404, "工艺单元不存在")
+
+
+@app.get("/api/virtual-plant/alarms", response_model=list[SimulationAlarmState])
+def virtual_plant_alarms():
+    return virtual_plant.current_state().alarms
+
+
+@app.get("/api/virtual-plant/scenarios", response_model=list[ScenarioDefinition])
+def virtual_plant_scenarios():
+    return virtual_plant.scenarios
+
+
+@app.get("/api/virtual-plant/formulas", response_model=list[FormulaRecord])
+def virtual_plant_formulas():
+    return virtual_plant.formulas
+
+
+@app.post("/api/virtual-plant/start", response_model=SimulationActionResponse)
+def virtual_plant_start():
+    return {"success": True, "state": virtual_plant.start()}
+
+
+@app.post("/api/virtual-plant/pause", response_model=SimulationActionResponse)
+def virtual_plant_pause():
+    return {"success": True, "state": virtual_plant.pause()}
+
+
+@app.post("/api/virtual-plant/step", response_model=SimulationActionResponse)
+def virtual_plant_step(payload: StepRequest):
+    return {"success": True, "state": virtual_plant.step(payload.steps)}
+
+
+@app.post("/api/virtual-plant/reset", response_model=SimulationActionResponse)
+def virtual_plant_reset():
+    return {"success": True, "state": virtual_plant.reset()}
+
+
+@app.post("/api/virtual-plant/speed", response_model=SimulationActionResponse)
+def virtual_plant_speed(payload: SpeedRequest):
+    return {"success": True, "state": virtual_plant.set_speed(payload.speed)}
+
+
+@app.post("/api/virtual-plant/scenario", response_model=SimulationActionResponse)
+def virtual_plant_scenario(payload: SimulationScenarioRequest):
+    try:
+        return {"success": True, "state": virtual_plant.load_scenario(payload.scenario_id)}
+    except KeyError:
+        raise HTTPException(404, "仿真场景不存在")
+
+
+@app.patch("/api/virtual-plant/units/{unit_id}/equipment/{equipment_id}", response_model=SimulationActionResponse)
+def virtual_plant_equipment(unit_id: str, equipment_id: str, payload: EquipmentUpdateRequest):
+    try:
+        return {"success": True, "state": virtual_plant.update_equipment(unit_id, equipment_id, payload)}
+    except KeyError:
+        raise HTTPException(404, "工艺单元或设备不存在")
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+
+@app.post("/api/virtual-plant/snapshots", response_model=SnapshotResponse)
+def virtual_plant_snapshot(payload: SnapshotRequest):
+    return {"success": True, "snapshot_id": virtual_plant.save_snapshot(payload.name)}
+
+
+@app.post("/api/virtual-plant/snapshots/restore", response_model=SimulationActionResponse)
+def virtual_plant_snapshot_restore(payload: SnapshotRestoreRequest):
+    try:
+        return {"success": True, "state": virtual_plant.restore_snapshot(payload.snapshot_id)}
+    except KeyError:
+        raise HTTPException(404, "状态快照不存在")
