@@ -297,7 +297,9 @@ def technology_compare(payload: TechnologyRequest):
 def factors(factor_type: str | None = None, region: str = "中国", date_value: str | None = None):
     if factor_type:
         return {"factor_type": factor_type, "region": region, "factor_value": factor_db.get_factor(factor_type, region, date_value)}
-    out = factor_db.export_factors(str(ROOT / "work" / "factors.csv"), format="csv")
+    target = ROOT / "work" / "factors.csv"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    out = factor_db.export_factors(str(target), format="csv")
     return {"records": records(out), "fallback_mode": bool(getattr(factor_db, "is_fallback", False))}
 
 
@@ -315,6 +317,7 @@ def factor_update(payload: FactorUpdate):
 @app.get("/api/factors/export")
 def factor_export(format: Literal["csv", "excel"] = "csv"):
     target = ROOT / "work" / ("carbon_factors.xlsx" if format == "excel" else "carbon_factors.csv")
+    target.parent.mkdir(parents=True, exist_ok=True)
     df = factor_db.export_factors(str(target), format=format)
     media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if format == "excel" else "text/csv"
     return StreamingResponse(iter([target.read_bytes()]), media_type=media, headers={"Content-Disposition": f'attachment; filename="{target.name}"'})
