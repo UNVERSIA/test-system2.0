@@ -14,6 +14,7 @@
 - 当前 Vue 页面是迁移骨架，尚未逐项复刻 Streamlit 的全部图表视觉、2D iframe 编辑器、GLB 设备交互、完整数字人流式对话和闯关拖拽界面；这些页面入口和后端接口已具备，但不能宣称功能等价完成。
 - 旧版 TensorFlow 在本机 Python 3.10.14/Windows 环境加载 DLL 失败；原 `GitHub/test_trace.py` 收集阶段会因 `predictor.model is None` 报错。新版默认健康检查报告 `tensorflow_available=false`，预测接口保留原统计备用模式。
 - Coze 未配置 `COZE_AGENT_TOKEN`/`COZE_PROJECT_ID` 时，接口返回配置错误；未填充任何密钥。
+- 目标规范要求 Python 3.11；当前主机可用版本为 3.10.14、3.12.13 和 3.13，尚未擅自安装新 Python。部署时应使用独立 Python 3.11 venv。
 - 原始页面在无上传数据时足迹、账户、优化页显示“请先上传运行数据”，基线已如实保存。
 - 数据库中部分排放因子、B0/MCF、能耗分配和预测假设没有明确出处，详见公式清单“待核实”。
 
@@ -42,4 +43,3 @@ npm run dev -- --host 127.0.0.1
 ## 下一阶段
 
 按 `parity_checklist.md` 的顺序逐页把原 HTML/Three.js/Plotly 数据和交互迁入 Vue 组件，使用同一份 Excel 和示例输入进行数值 diff，补齐 Playwright E2E 后再逐页提交并将清单标为通过。
-
