@@ -1,0 +1,166 @@
+- alert:
+  - paragraph: ⚠️ TensorFlow加载失败，预测功能将使用备用模式（基于统计方法）
+- heading "数据输入与设置" [level=2]
+- paragraph: 上传运行数据（Excel）
+- region "上传运行数据（Excel）":
+  - button "Choose File"
+  - generic: Drag and drop file here
+  - generic: Limit 200MB per file • XLSX
+  - button "Browse files"
+- heading "工艺优化模拟" [level=2]
+- paragraph: 曝气时间调整（%）
+- slider "曝气时间调整（%）":
+  - paragraph: "0"
+- paragraph: "-30"
+- paragraph: "30"
+- paragraph: PAC投加量调整（%）
+- slider "PAC投加量调整（%）":
+  - paragraph: "0"
+- paragraph: "-20"
+- paragraph: "20"
+- paragraph: 污泥回流比
+- slider "污泥回流比":
+  - paragraph: "0.50"
+- paragraph: "0.30"
+- paragraph: "0.80"
+- heading "动态效果设置" [level=2]
+- checkbox "启用动态水流效果" [checked]
+- paragraph: 启用动态水流效果
+- paragraph: 水流速度
+- slider "水流速度":
+  - paragraph: "10000"
+- paragraph: "1000"
+- paragraph: "20000"
+- heading "高级功能设置" [level=2]
+- button "更新电力排放因子":
+  - paragraph: 更新电力排放因子
+- button "生成模拟数据":
+  - paragraph: 生成模拟数据
+- button "重置甲烷因子数据库":
+  - paragraph: 重置甲烷因子数据库
+- heading "🔧 数字人助手设置" [level=2]
+- alert:
+  - paragraph: 当前使用真实 Coze 智能体
+- button "🔌 测试 Coze 连接":
+  - paragraph: 🔌 测试 Coze 连接
+- separator
+- heading "📚 历史对话" [level=3]
+- button "🗑️ 清空当前对话":
+  - paragraph: 🗑️ 清空当前对话
+- button "📥 导出历史对话":
+  - paragraph: 📥 导出历史对话
+- paragraph: 已保存 0 条对话记录
+- banner:
+  - button "Deploy":
+    - generic: Deploy
+  - button "Main menu":
+- heading "寻清问碳：基于智能体与数字孪生的污水处理甲烷监测调控与智慧科普系统" [level=2]:
+  - text: 寻清问碳：基于智能体与数字孪生的污水处理甲烷监测调控与智慧科普系统
+  - link "Link to heading":
+    - /url: "#bf8c90e4"
+- tablist:
+  - tab "3D水厂仿真":
+    - paragraph: 3D水厂仿真
+  - tab "工艺流程仿真":
+    - paragraph: 工艺流程仿真
+  - tab "甲烷足迹追踪":
+    - paragraph: 甲烷足迹追踪
+  - tab "甲烷账户管理":
+    - paragraph: 甲烷账户管理
+  - tab "优化与决策":
+    - paragraph: 优化与决策
+  - tab "甲烷排放预测":
+    - paragraph: 甲烷排放预测
+  - tab "减排技术分析" [active] [selected]:
+    - paragraph: 减排技术分析
+  - tab "因子库管理":
+    - paragraph: 因子库管理
+  - tab "🤖数字人助手":
+    - paragraph: 🤖数字人助手
+  - tab "🎮AI实验室·污水处理闯关":
+    - paragraph: 🎮AI实验室·污水处理闯关
+- tabpanel "减排技术分析":
+  - heading "甲烷减排技术对比分析" [level=2]:
+    - text: 甲烷减排技术对比分析
+    - link "Link to heading":
+      - /url: "#a3d8cb71"
+  - paragraph: 选择对比技术
+  - button "厌氧消化产沼, close by backspace":
+    - generic "厌氧消化产沼"
+  - button "光伏发电, close by backspace":
+    - generic "光伏发电"
+  - button "高效曝气, close by backspace":
+    - generic "高效曝气"
+  - combobox "Selected 厌氧消化产沼, 光伏发电, 高效曝气. 选择对比技术"
+  - button "Clear all"
+  - img "open"
+  - heading "可选减排技术说明" [level=3]:
+    - text: 可选减排技术说明
+    - link "Link to heading":
+      - /url: "#a604ed5"
+  - paragraph:
+    - strong: 厌氧消化产沼
+    - text: ": 利用污泥厌氧消化产生沼气发电，减少外购电力碳排放"
+  - paragraph:
+    - strong: 光伏发电
+    - text: ": 在厂区屋顶安装光伏板，利用太阳能发电抵消部分电力碳排放"
+  - paragraph:
+    - strong: 高效曝气
+    - text: ": 采用微孔曝气、变频控制等技术，降低生物处理单元能耗"
+  - paragraph:
+    - strong: 热泵技术
+    - text: ": 利用污水余热进行加热，减少辅助加热设备能耗"
+  - paragraph:
+    - strong: 污泥干化
+    - text: ": 污泥干化后资源化利用，减少污泥处置碳排放"
+  - paragraph:
+    - strong: 沼气发电
+    - text: ": 收集处理过程中产生的沼气进行发电，实现能源回收"
+  - heading "技术对比分析" [level=3]:
+    - text: 技术对比分析
+    - link "Link to heading":
+      - /url: "#9f9242ac"
+  - button "运行技术对比分析":
+    - paragraph: 运行技术对比分析
+  - alert:
+    - paragraph: 💡 请点击'运行技术对比分析'按钮，基于当前工厂数据生成技术对比分析
+  - heading "技术适用性分析" [level=3]:
+    - text: 技术适用性分析
+    - link "Link to heading":
+      - /url: "#83d9f390"
+  - paragraph: 选择技术查看详情
+  - generic: 厌氧消化产沼
+  - combobox "Selected 厌氧消化产沼. 选择技术查看详情"
+  - img "open"
+  - paragraph:
+    - strong: 厌氧消化产沼
+  - paragraph: 预计年减排量
+  - paragraph: 15000 kgCO2eq
+  - paragraph: 投资成本
+  - paragraph: 500 万元
+  - paragraph: 投资回收期
+  - paragraph: 5 年
+  - paragraph: 适用性
+  - paragraph: 高
+  - paragraph: 甲烷减排贡献率
+  - paragraph: 25%
+  - paragraph: 能源中和率
+  - paragraph: 30%
+  - heading "甲烷抵消计算" [level=3]:
+    - text: 甲烷抵消计算
+    - link "Link to heading":
+      - /url: "#d4a0ee51"
+  - paragraph: 沼气发电量(kWh)
+  - spinbutton "沼气发电量(kWh)": "1000"
+  - paragraph: 光伏发电量(kWh)
+  - spinbutton "光伏发电量(kWh)": "500"
+  - paragraph: 热泵技术节能量(kWh)
+  - spinbutton "热泵技术节能量(kWh)": "300"
+  - paragraph: 污泥资源化量(kgDS)
+  - spinbutton "污泥资源化量(kgDS)": "200"
+  - paragraph: 总甲烷抵消量
+  - paragraph: 3345.00 kgCO2eq
+- button "Scroll tabs right":
+- iframe:
+  - main:
+    - generic "点击唤醒烷仔"

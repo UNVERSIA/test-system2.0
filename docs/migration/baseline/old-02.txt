@@ -1,0 +1,216 @@
+- alert:
+  - paragraph: ⚠️ TensorFlow加载失败，预测功能将使用备用模式（基于统计方法）
+- heading "数据输入与设置" [level=2]
+- paragraph: 上传运行数据（Excel）
+- region "上传运行数据（Excel）":
+  - button "Choose File"
+  - generic: Drag and drop file here
+  - generic: Limit 200MB per file • XLSX
+  - button "Browse files"
+- heading "工艺优化模拟" [level=2]
+- paragraph: 曝气时间调整（%）
+- slider "曝气时间调整（%）":
+  - paragraph: "0"
+- paragraph: "-30"
+- paragraph: "30"
+- paragraph: PAC投加量调整（%）
+- slider "PAC投加量调整（%）":
+  - paragraph: "0"
+- paragraph: "-20"
+- paragraph: "20"
+- paragraph: 污泥回流比
+- slider "污泥回流比":
+  - paragraph: "0.50"
+- paragraph: "0.30"
+- paragraph: "0.80"
+- heading "动态效果设置" [level=2]
+- checkbox "启用动态水流效果" [checked]
+- paragraph: 启用动态水流效果
+- paragraph: 水流速度
+- slider "水流速度":
+  - paragraph: "10000"
+- paragraph: "1000"
+- paragraph: "20000"
+- heading "高级功能设置" [level=2]
+- button "更新电力排放因子":
+  - paragraph: 更新电力排放因子
+- button "生成模拟数据":
+  - paragraph: 生成模拟数据
+- button "重置甲烷因子数据库":
+  - paragraph: 重置甲烷因子数据库
+- heading "🔧 数字人助手设置" [level=2]
+- alert:
+  - paragraph: 当前使用真实 Coze 智能体
+- button "🔌 测试 Coze 连接":
+  - paragraph: 🔌 测试 Coze 连接
+- separator
+- heading "📚 历史对话" [level=3]
+- button "🗑️ 清空当前对话":
+  - paragraph: 🗑️ 清空当前对话
+- button "📥 导出历史对话":
+  - paragraph: 📥 导出历史对话
+- paragraph: 已保存 0 条对话记录
+- banner:
+  - button "Deploy":
+    - generic: Deploy
+  - button "Main menu":
+- heading "寻清问碳：基于智能体与数字孪生的污水处理甲烷监测调控与智慧科普系统" [level=2]:
+  - text: 寻清问碳：基于智能体与数字孪生的污水处理甲烷监测调控与智慧科普系统
+  - link "Link to heading":
+    - /url: "#bf8c90e4"
+- tablist:
+  - tab "3D水厂仿真":
+    - paragraph: 3D水厂仿真
+  - tab "工艺流程仿真" [active] [selected]:
+    - paragraph: 工艺流程仿真
+  - tab "甲烷足迹追踪":
+    - paragraph: 甲烷足迹追踪
+  - tab "甲烷账户管理":
+    - paragraph: 甲烷账户管理
+  - tab "优化与决策":
+    - paragraph: 优化与决策
+  - tab "甲烷排放预测":
+    - paragraph: 甲烷排放预测
+  - tab "减排技术分析":
+    - paragraph: 减排技术分析
+  - tab "因子库管理":
+    - paragraph: 因子库管理
+  - tab "🤖数字人助手":
+    - paragraph: 🤖数字人助手
+  - tab "🎮AI实验室·污水处理闯关":
+    - paragraph: 🎮AI实验室·污水处理闯关
+- tabpanel "工艺流程仿真":
+  - heading "2D水厂工艺流程仿真" [level=2]:
+    - text: 2D水厂工艺流程仿真
+    - link "Link to heading":
+      - /url: "#2-d"
+  - iframe:
+    - textbox "新组件名称"
+    - combobox "组件类型":
+      - option "预处理" [selected]
+      - option "生物处理"
+      - option "深度处理"
+      - option "污泥处理"
+      - option "辅助设施"
+      - option "出水设施"
+    - button "＋ 添加组件"
+    - textbox "组件说明文字"
+    - button "修改说明文字"
+    - combobox "管线类型":
+      - option "水流" [selected]
+      - option "污泥"
+      - option "臭气"
+      - option "空气"
+    - textbox "管线标注（可选）"
+    - button "连接组件"
+    - button "删除所选"
+    - button "清空画布"
+    - button "恢复原始流程"
+    - textbox "分区名称"
+    - generic: 分区颜色
+    - textbox "分区颜色"
+    - button "＋ 添加分区"
+    - button "修改分区文字"
+    - button "删除分区"
+    - generic: 可直接拖动现有组件；连接时先点击“连接组件”，再点击起点和终点的圆形连接点。
+    - generic: 预处理区
+    - generic: 生物处理区
+    - generic: 深度处理区
+    - generic: 泥处理区
+    - generic: 出水区
+    - generic: 出水区
+    - generic: 粗格栅
+    - generic: 正常运行
+    - generic: 提升泵房
+    - generic: 正常运行
+    - generic: 细格栅
+    - generic: 正常运行
+    - generic: 曝气沉砂池
+    - generic: 正常运行
+    - generic: 膜格栅
+    - generic: 正常运行
+    - generic: 厌氧池
+    - generic: 正常运行
+    - generic: 缺氧池
+    - generic: 正常运行
+    - generic: 好氧池
+    - generic: 正常运行
+    - generic: MBR膜池
+    - generic: 正常运行
+    - generic: 污泥处理车间
+    - generic: 正常运行
+    - generic: 鼓风机房
+    - generic: 正常运行
+    - generic: 除臭系统
+    - generic: 正常运行
+    - generic: DF系统
+    - generic: 正常运行
+    - generic: 催化氧化
+    - generic: 正常运行
+    - generic: 消毒接触池
+    - generic: 正常运行
+    - generic: 污水
+    - generic: 污泥
+    - generic: 污泥S5
+    - generic: 臭气G1
+    - generic: 臭气G2
+    - generic: 臭气G3
+    - generic: 臭气G4
+    - generic: 臭气G5
+    - generic: 臭气G6
+    - generic: 臭气G7
+    - generic: 处理后的臭气排放
+    - generic: 浓水
+    - generic: 臭氧
+    - generic: 栅渣S1
+    - generic: 栅渣S2
+    - generic: 沉渣S3
+    - generic: 栅渣S4
+    - generic: 外运
+    - generic: 排河
+    - generic: MBR生物池
+    - heading "当前水流状态" [level=3]
+    - paragraph: "流量: 10000 m³/d"
+    - paragraph: "COD: 200 → 50 mg/L"
+    - paragraph: "TN: 40 → 15 mg/L"
+  - paragraph: 选择工艺单元
+  - generic: 粗格栅
+  - combobox "Selected 粗格栅. 选择工艺单元"
+  - img "open"
+  - heading "粗格栅 - 参数设置" [level=3]:
+    - text: 粗格栅 - 参数设置
+    - link "Link to heading":
+      - /url: "#de265349"
+  - checkbox "启用单元" [checked]
+  - paragraph: 启用单元
+  - paragraph: 处理水量(m³)
+  - spinbutton "处理水量(m³)": "10000.00"
+  - paragraph: 能耗(kWh)
+  - spinbutton "能耗(kWh)": "1500.00"
+  - heading "粗格栅 - 当前状态" [level=3]:
+    - text: 粗格栅 - 当前状态
+    - link "Link to heading":
+      - /url: "#439d566d"
+  - paragraph: 甲烷排放量
+  - paragraph: 450.00 kgCO2eq
+  - paragraph: 运行状态
+  - paragraph: 运行中
+  - paragraph: 处理水量
+  - paragraph: 10000 m³
+  - paragraph: 能耗
+  - paragraph: 1500 kWh
+  - generic "keyboard_arrow_down 单元详情":
+    - generic: keyboard_arrow_down
+    - paragraph: 单元详情
+  - paragraph: 单元描述
+  - textbox "单元描述":
+    - /placeholder: ""
+  - paragraph: 运行笔记
+  - textbox "运行笔记":
+    - /placeholder: ""
+  - alert:
+    - paragraph: 粗格栅主要用于去除污水中的大型固体杂质，防止后续设备堵塞
+- button "Scroll tabs right":
+- iframe:
+  - main:
+    - generic "点击唤醒烷仔"

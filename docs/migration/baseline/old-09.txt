@@ -1,0 +1,130 @@
+- alert:
+  - paragraph: ⚠️ TensorFlow加载失败，预测功能将使用备用模式（基于统计方法）
+- heading "数据输入与设置" [level=2]
+- paragraph: 上传运行数据（Excel）
+- region "上传运行数据（Excel）":
+  - button "Choose File"
+  - generic: Drag and drop file here
+  - generic: Limit 200MB per file • XLSX
+  - button "Browse files"
+- heading "工艺优化模拟" [level=2]
+- paragraph: 曝气时间调整（%）
+- slider "曝气时间调整（%）":
+  - paragraph: "0"
+- paragraph: "-30"
+- paragraph: "30"
+- paragraph: PAC投加量调整（%）
+- slider "PAC投加量调整（%）":
+  - paragraph: "0"
+- paragraph: "-20"
+- paragraph: "20"
+- paragraph: 污泥回流比
+- slider "污泥回流比":
+  - paragraph: "0.50"
+- paragraph: "0.30"
+- paragraph: "0.80"
+- heading "动态效果设置" [level=2]
+- checkbox "启用动态水流效果" [checked]
+- paragraph: 启用动态水流效果
+- paragraph: 水流速度
+- slider "水流速度":
+  - paragraph: "10000"
+- paragraph: "1000"
+- paragraph: "20000"
+- heading "高级功能设置" [level=2]
+- button "更新电力排放因子":
+  - paragraph: 更新电力排放因子
+- button "生成模拟数据":
+  - paragraph: 生成模拟数据
+- button "重置甲烷因子数据库":
+  - paragraph: 重置甲烷因子数据库
+- heading "🔧 数字人助手设置" [level=2]
+- alert:
+  - paragraph: 当前使用真实 Coze 智能体
+- button "🔌 测试 Coze 连接":
+  - paragraph: 🔌 测试 Coze 连接
+- separator
+- heading "📚 历史对话" [level=3]
+- button "🗑️ 清空当前对话":
+  - paragraph: 🗑️ 清空当前对话
+- button "📥 导出历史对话":
+  - paragraph: 📥 导出历史对话
+- paragraph: 已保存 0 条对话记录
+- banner:
+  - button "Deploy":
+    - generic: Deploy
+  - button "Main menu":
+- heading "寻清问碳：基于智能体与数字孪生的污水处理甲烷监测调控与智慧科普系统" [level=2]:
+  - text: 寻清问碳：基于智能体与数字孪生的污水处理甲烷监测调控与智慧科普系统
+  - link "Link to heading":
+    - /url: "#bf8c90e4"
+- tablist:
+  - tab "3D水厂仿真":
+    - paragraph: 3D水厂仿真
+  - tab "工艺流程仿真":
+    - paragraph: 工艺流程仿真
+  - tab "甲烷足迹追踪":
+    - paragraph: 甲烷足迹追踪
+  - tab "甲烷账户管理":
+    - paragraph: 甲烷账户管理
+  - tab "优化与决策":
+    - paragraph: 优化与决策
+  - tab "甲烷排放预测":
+    - paragraph: 甲烷排放预测
+  - tab "减排技术分析":
+    - paragraph: 减排技术分析
+  - tab "因子库管理":
+    - paragraph: 因子库管理
+  - tab "🤖数字人助手" [active] [selected]:
+    - paragraph: 🤖数字人助手
+  - tab "🎮AI实验室·污水处理闯关":
+    - paragraph: 🎮AI实验室·污水处理闯关
+- tabpanel "🤖数字人助手":
+  - heading "🤖 污水处理智能助手" [level=2]:
+    - text: 🤖 污水处理智能助手
+    - link "Link to heading":
+      - /url: "#fcf0f099"
+  - alert:
+    - paragraph: 🎉 欢迎来到智能助手！我是「烷仔」，你的污水处理智能助手。
+    - paragraph: 我可以帮你：
+    - list:
+      - listitem: 解答水厂工艺流程相关问题
+      - listitem: 解释甲烷排放数据和计算方法
+      - listitem: 提供工艺优化建议
+      - listitem: 指导系统功能使用
+    - paragraph:
+      - text: 💡
+      - strong: 使用方式
+      - text: ：在下方输入框输入问题，或点击右侧快捷问题快速开始对话！
+  - heading "👋 我是烷仔" [level=3]:
+    - text: 👋 我是烷仔
+    - link "Link to heading":
+      - /url: "#bbaa2530"
+  - iframe:
+    - img "数字人"
+    - generic: 烷仔
+    - generic: 污水处理智能助手
+  - heading "❓ 常见问题" [level=3]:
+    - text: ❓ 常见问题
+    - link "Link to heading":
+      - /url: "#cb8193d3"
+  - button "💡 水厂有哪些工艺流程？":
+    - paragraph: 💡 水厂有哪些工艺流程？
+  - button "💡 如何优化工艺降低排放？":
+    - paragraph: 💡 如何优化工艺降低排放？
+  - button "💡 有哪些减排技术？":
+    - paragraph: 💡 有哪些减排技术？
+  - button "💡 甲烷排放是如何计算的？":
+    - paragraph: 💡 甲烷排放是如何计算的？
+  - button "💡 LSTM预测如何使用？":
+    - paragraph: 💡 LSTM预测如何使用？
+  - heading "💬 与烷仔对话" [level=3]:
+    - text: 💬 与烷仔对话
+    - link "Link to heading":
+      - /url: "#4a6d71af"
+  - textbox "输入你的问题..."
+  - button "Send message" [disabled]:
+- button "Scroll tabs left":
+- iframe:
+  - main:
+    - generic "点击唤醒烷仔"

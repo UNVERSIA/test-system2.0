@@ -1,0 +1,195 @@
+- alert:
+  - paragraph: ⚠️ TensorFlow加载失败，预测功能将使用备用模式（基于统计方法）
+- heading "数据输入与设置" [level=2]
+- paragraph: 上传运行数据（Excel）
+- region "上传运行数据（Excel）":
+  - button "Choose File"
+  - generic: Drag and drop file here
+  - generic: Limit 200MB per file • XLSX
+  - button "Browse files"
+- heading "工艺优化模拟" [level=2]
+- paragraph: 曝气时间调整（%）
+- slider "曝气时间调整（%）":
+  - paragraph: "0"
+- paragraph: "-30"
+- paragraph: "30"
+- paragraph: PAC投加量调整（%）
+- slider "PAC投加量调整（%）":
+  - paragraph: "0"
+- paragraph: "-20"
+- paragraph: "20"
+- paragraph: 污泥回流比
+- slider "污泥回流比":
+  - paragraph: "0.50"
+- paragraph: "0.30"
+- paragraph: "0.80"
+- heading "动态效果设置" [level=2]
+- checkbox "启用动态水流效果" [checked]
+- paragraph: 启用动态水流效果
+- paragraph: 水流速度
+- slider "水流速度":
+  - paragraph: "10000"
+- paragraph: "1000"
+- paragraph: "20000"
+- heading "高级功能设置" [level=2]
+- button "更新电力排放因子":
+  - paragraph: 更新电力排放因子
+- button "生成模拟数据":
+  - paragraph: 生成模拟数据
+- button "重置甲烷因子数据库":
+  - paragraph: 重置甲烷因子数据库
+- heading "🔧 数字人助手设置" [level=2]
+- alert:
+  - paragraph: 当前使用真实 Coze 智能体
+- button "🔌 测试 Coze 连接":
+  - paragraph: 🔌 测试 Coze 连接
+- separator
+- heading "📚 历史对话" [level=3]
+- button "🗑️ 清空当前对话":
+  - paragraph: 🗑️ 清空当前对话
+- button "📥 导出历史对话":
+  - paragraph: 📥 导出历史对话
+- paragraph: 已保存 0 条对话记录
+- banner:
+  - button "Deploy":
+    - generic: Deploy
+  - button "Main menu":
+- heading "寻清问碳：基于智能体与数字孪生的污水处理甲烷监测调控与智慧科普系统" [level=2]:
+  - text: 寻清问碳：基于智能体与数字孪生的污水处理甲烷监测调控与智慧科普系统
+  - link "Link to heading":
+    - /url: "#bf8c90e4"
+- tablist:
+  - tab "3D水厂仿真" [active] [selected]:
+    - paragraph: 3D水厂仿真
+  - tab "工艺流程仿真":
+    - paragraph: 工艺流程仿真
+  - tab "甲烷足迹追踪":
+    - paragraph: 甲烷足迹追踪
+  - tab "甲烷账户管理":
+    - paragraph: 甲烷账户管理
+  - tab "优化与决策":
+    - paragraph: 优化与决策
+  - tab "甲烷排放预测":
+    - paragraph: 甲烷排放预测
+  - tab "减排技术分析":
+    - paragraph: 减排技术分析
+  - tab "因子库管理":
+    - paragraph: 因子库管理
+  - tab "🤖数字人助手":
+    - paragraph: 🤖数字人助手
+  - tab "🎮AI实验室·污水处理闯关":
+    - paragraph: 🎮AI实验室·污水处理闯关
+- tabpanel "3D水厂仿真":
+  - heading "3D 水厂数字孪生虚拟仿真" [level=2]:
+    - text: 3D 水厂数字孪生虚拟仿真
+    - link "Link to heading":
+      - /url: "#3-d"
+  - separator
+  - heading "🏭 污水处理厂 3D 数字孪生系统" [level=2]:
+    - text: 🏭 污水处理厂 3D 数字孪生系统
+    - link "Link to heading":
+      - /url: "#3-d"
+  - paragraph: 基于 Three.js 的物理级真实感渲染 | 实时光影 | 动态水面 | 点击编辑
+  - generic "keyboard_arrow_right 📖 系统特性与操作说明":
+    - generic: keyboard_arrow_right
+    - paragraph: 📖 系统特性与操作说明
+  - iframe
+  - iframe:
+    - heading "🎮 视图控制" [level=4]
+    - button "重置视角"
+    - button "自动旋转"
+    - button "水面效果"
+    - heading "选择设备" [level=2]
+    - heading "📊 甲烷排放等级" [level=4]
+    - generic: 🔴 高排放 (>2000 kgCO₂eq)
+    - generic: 🟠 较高排放 (1000-2000)
+    - generic: 🟡 中等排放 (500-1000)
+    - generic: 🟢 正常排放 (<500)
+    - generic: ⚪ 设备停用
+    - generic: 💡 点击设备查看详情并编辑参数
+  - separator
+  - heading "🎛️ 工艺区参数编辑" [level=3]:
+    - text: 🎛️ 工艺区参数编辑
+    - link "Link to heading":
+      - /url: "#66f4fec4"
+  - paragraph: 选择工艺区进行编辑
+  - generic: 粗格栅
+  - combobox "Selected 粗格栅. 选择工艺区进行编辑"
+  - img "open"
+  - heading "基础参数" [level=5]:
+    - text: 基础参数
+    - link "Link to heading":
+      - /url: "#79661793"
+  - paragraph: 甲烷浓度 (mg/L)
+  - spinbutton "甲烷浓度 (mg/L)": "0.50"
+  - button:
+  - button:
+  - paragraph: 流量 (m³/d)
+  - spinbutton "流量 (m³/d)": "10000.00"
+  - button:
+  - button:
+  - paragraph: 液位 (%)
+  - spinbutton "液位 (%)": "50.00"
+  - button:
+  - button:
+  - paragraph: 温度 (°C)
+  - spinbutton "温度 (°C)": "25.00"
+  - button:
+  - button:
+  - paragraph: pH
+  - spinbutton "pH": "7.00"
+  - button:
+  - button:
+  - checkbox "运行状态" [checked]
+  - paragraph: 运行状态
+  - heading "当前状态" [level=5]:
+    - text: 当前状态
+    - link "Link to heading":
+      - /url: "#d611292e"
+  - paragraph: 甲烷排放
+  - paragraph: 450.0 kgCO₂eq
+  - paragraph: 能耗
+  - paragraph: 1500 kWh
+  - button "💾 保存参数修改":
+    - paragraph: 💾 保存参数修改
+  - separator
+  - paragraph: 💨 总甲烷排放
+  - paragraph: "12500"
+  - paragraph: kgCO₂eq/d
+  - paragraph: 💧 总处理水量
+  - paragraph: "120500"
+  - paragraph: m³/d
+  - paragraph: ⚡ 总能耗
+  - paragraph: "35100"
+  - paragraph: kWh/d
+  - paragraph: 🔧 运行单元
+  - paragraph: "15"
+  - paragraph: / 15
+  - heading "📈 排放分布统计" [level=3]:
+    - text: 📈 排放分布统计
+    - link "Link to heading":
+      - /url: "#59af7d02"
+  - heading "🔴 0" [level=3]:
+    - text: 🔴 0
+    - link "Link to heading":
+      - /url: "#0"
+  - paragraph: 高风险单元
+  - heading "🟠 6" [level=3]:
+    - text: 🟠 6
+    - link "Link to heading":
+      - /url: "#6"
+  - paragraph: 中风险单元
+  - heading "🟡 4" [level=3]:
+    - text: 🟡 4
+    - link "Link to heading":
+      - /url: "#4"
+  - paragraph: 一般单元
+  - heading "🟢 5" [level=3]:
+    - text: 🟢 5
+    - link "Link to heading":
+      - /url: "#5"
+  - paragraph: 正常单元
+- button "Scroll tabs right":
+- iframe:
+  - main:
+    - generic "点击唤醒烷仔"
