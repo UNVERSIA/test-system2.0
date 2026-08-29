@@ -10,3 +10,4 @@ work/
 frontend/node_modules/
 frontend/dist/
 frontend/tsconfig.tsbuildinfo
+frontend/src/*.js
