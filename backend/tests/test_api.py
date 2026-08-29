@@ -22,9 +22,25 @@ SAMPLE = {
 }
 
 
-def test_health_and_units():
-    assert client.get("/api/health").json()["status"] == "ok"
+def test_health_and_units(monkeypatch):
+    monkeypatch.delenv("COZE_AGENT_TOKEN", raising=False)
+    monkeypatch.delenv("COZE_PROJECT_ID", raising=False)
+    health = client.get("/api/health").json()
+    assert health["status"] == "ok"
+    assert health["coze_configured"] is False
     assert len(client.get("/api/units").json()["units"]) == 15
+
+
+def test_chat_without_coze_configuration(monkeypatch):
+    monkeypatch.delenv("COZE_AGENT_TOKEN", raising=False)
+    monkeypatch.delenv("COZE_PROJECT_ID", raising=False)
+    response = client.post("/api/chat", json={"message": "你好"})
+    assert response.status_code == 200
+    assert response.json() == {
+        "success": False,
+        "response": "智能体服务尚未配置，请在本地环境变量中配置",
+        "error": "coze_configuration",
+    }
 
 
 def test_carbon_parity_sample():

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import pandas as pd
+from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -16,6 +17,7 @@ from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parents[2]
 GITHUB = ROOT / "GitHub"
+load_dotenv(ROOT / "backend" / ".env")
 if str(GITHUB) not in sys.path:
     sys.path.insert(0, str(GITHUB))
 
@@ -156,7 +158,11 @@ def records(df: pd.DataFrame) -> list[dict[str, Any]]:
 
 @app.get("/api/health")
 def health() -> dict[str, Any]:
-    return {"status": "ok", "tensorflow_available": bool(TENSORFLOW_AVAILABLE)}
+    return {
+        "status": "ok",
+        "tensorflow_available": bool(TENSORFLOW_AVAILABLE),
+        "coze_configured": bool(os.getenv("COZE_AGENT_TOKEN") and os.getenv("COZE_PROJECT_ID")),
+    }
 
 
 @app.post("/api/data/upload")
@@ -342,6 +348,8 @@ def chat(payload: dict[str, str]):
     message = payload.get("message", "")
     if not message.strip():
         return {"success": False, "response": "请输入问题。", "error": "empty_message"}
+    if not (os.getenv("COZE_AGENT_TOKEN") and os.getenv("COZE_PROJECT_ID")):
+        return {"success": False, "response": "智能体服务尚未配置，请在本地环境变量中配置", "error": "coze_configuration"}
     if CozeAPI is None:
         return {"success": False, "response": "数字人助手暂时不可用，请检查文件配置", "error": "coze_unavailable"}
     try:

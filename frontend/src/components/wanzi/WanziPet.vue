@@ -1,0 +1,27 @@
+<script setup lang="ts">
+import { onMounted, onUnmounted, ref } from 'vue'
+import * as THREE from 'three'
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+const props = withDefaults(defineProps<{ interactive?: boolean }>(), { interactive: true })
+const emit = defineEmits<{ click: [] }>()
+const host = ref<HTMLElement | null>(null)
+const loaded = ref(false)
+let renderer: THREE.WebGLRenderer | undefined; let dracoLoader: DRACOLoader | undefined; let frame = 0; let camera: THREE.PerspectiveCamera; let object: THREE.Object3D | undefined; let mixer: THREE.AnimationMixer | undefined; let idle: THREE.AnimationAction | undefined; let hello: THREE.AnimationAction | undefined; let baseY = 0; let yaw = 0; let pitch = 0; let lookYaw = 0; let lookPitch = 0; let lastX = 0; let lastY = 0; let orbiting = false; let hovering = false; let rotated = false; let activating = false; let activateTimer: number | undefined
+function resize() { if (!host.value || !renderer) return; const width=Math.max(host.value.clientWidth,1), height=Math.max(host.value.clientHeight,1); camera.aspect=width/height; camera.updateProjectionMatrix(); renderer.setSize(width,height,false) }
+function begin(event: PointerEvent) { if (!props.interactive) return; orbiting=true;rotated=false;lastX=event.clientX; lastY=event.clientY; host.value?.setPointerCapture(event.pointerId) }
+function move(event: PointerEvent) { if (!props.interactive) return;if(!orbiting){const box=host.value?.getBoundingClientRect();if(box){lookYaw=THREE.MathUtils.clamp(((event.clientX-box.left)/box.width-.5)*2,-1,1)*.42;lookPitch=THREE.MathUtils.clamp(((event.clientY-box.top)/box.height-.5)*2,-1,1)*.12}return} const dx=event.clientX-lastX,dy=event.clientY-lastY;if(Math.abs(dx)+Math.abs(dy)>3)rotated=true;yaw += dx*.012; pitch=Math.max(-.32,Math.min(.32,pitch+dy*.006)); lastX=event.clientX; lastY=event.clientY }
+function end(event: PointerEvent) { if (!orbiting) return; orbiting=false; host.value?.releasePointerCapture(event.pointerId);if(rotated)window.setTimeout(()=>rotated=false,0) }
+function enter(){if(props.interactive)hovering=true} function leave(){hovering=false;lookYaw=0;lookPitch=0}
+function activate() { if (!props.interactive || orbiting || rotated || activating) return; activating=true; const duration=hello?Math.min(2200,Math.max(800,hello.getClip().duration*1000)):850; if (hello) { if(idle) idle.fadeOut(.15); hello.reset().fadeIn(.12).play() } activateTimer=window.setTimeout(()=>{hello?.fadeOut(.15);idle?.reset().fadeIn(.15).play();activating=false;emit('click')},duration) }
+onMounted(() => {
+  if (!host.value) return
+  const scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(28,1,.01,100); renderer=new THREE.WebGLRenderer({alpha:true,antialias:true,powerPreference:'high-performance'}); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2)); renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05; renderer.setClearColor(0,0); host.value.appendChild(renderer.domElement)
+  scene.add(new THREE.HemisphereLight(0xffffff,0x405071,2.7)); const key=new THREE.DirectionalLight(0xffffff,3.3); key.position.set(3,5,4); scene.add(key); const rim=new THREE.DirectionalLight(0x7de3df,1.8); rim.position.set(-4,2,-3); scene.add(rim)
+  dracoLoader=new DRACOLoader(); dracoLoader.setDecoderPath('/assets/draco/'); dracoLoader.setDecoderConfig({type:'wasm'}); const gltfLoader=new GLTFLoader(); gltfLoader.setDRACOLoader(dracoLoader)
+  gltfLoader.load('/assets/models/wanzi_web.glb', gltf => { object=gltf.scene; scene.add(object); const box=new THREE.Box3().setFromObject(object); const size=box.getSize(new THREE.Vector3()); const center=box.getCenter(new THREE.Vector3()); object.position.sub(center); baseY=object.position.y; const max=Math.max(size.x,size.y,size.z)||1; const distance=max/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))); camera.position.set(0,max*.05,distance*1.12); camera.near=Math.max(.01,distance/100); camera.far=distance*100; camera.updateProjectionMatrix(); if(gltf.animations.length){mixer=new THREE.AnimationMixer(object); const helloClip=gltf.animations.find(animation=>/hello|wave|waving|挥手/i.test(animation.name)); const idleClip=gltf.animations.find(animation=>/idle|stand|breath|待机/i.test(animation.name)); if(helloClip) hello=mixer.clipAction(helloClip); if(idleClip){idle=mixer.clipAction(idleClip);idle.play()} } loaded.value=true }, undefined, error => console.error('烷仔模型加载失败',error))
+  resize(); window.addEventListener('resize',resize); const clock=new THREE.Clock(); const animate=()=>{frame=requestAnimationFrame(animate); mixer?.update(clock.getDelta()); if(object){ object.position.y += (baseY-object.position.y)*.08; const targetYaw=yaw+(hovering&&!orbiting?lookYaw:Math.sin(performance.now()*.00065)*.045);const targetPitch=pitch+(hovering&&!orbiting?lookPitch:0);object.rotation.y += (targetYaw-object.rotation.y)*.16; object.rotation.x += (targetPitch-object.rotation.x)*.14 } renderer?.render(scene,camera) }; animate()
+})
+onUnmounted(()=>{cancelAnimationFrame(frame);window.clearTimeout(activateTimer);window.removeEventListener('resize',resize);dracoLoader?.dispose();renderer?.dispose()})
+</script>
+<template><div ref="host" class="wanzi-pet-host" :data-model-loaded="loaded" @pointerenter="enter" @pointerleave="leave" @pointerdown="begin" @pointermove="move" @pointerup="end" @pointercancel="end" @click="activate" /></template>
