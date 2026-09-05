@@ -81,8 +81,8 @@ except ImportError as e:
             return pd.DataFrame({'日期': [], 'predicted_CO2eq': [], 'lower_bound': [], 'upper_bound': []})
 
 # 页面配置
-st.set_page_config(page_title="污水处理甲烷监测调控与智慧科普系统", layout="wide", page_icon="🌍")
-st.header("寻清问碳：基于智能体与数字孪生的污水处理甲烷监测调控与智慧科普系统")
+st.set_page_config(page_title="污水处理甲烷智能监测与AI动态调控平台", layout="wide", page_icon="🌍")
+st.header("碳智清源：污水处理甲烷智能监测与AI动态调控平台")
 
 
 # ========== 智能数据适配器 ==========
