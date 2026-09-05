@@ -4,15 +4,18 @@ import { useRoute, useRouter } from "vue-router";
 import { api } from "./api";
 import WanziFloatingAssistant from "./components/wanzi/WanziFloatingAssistant.vue";
 import { useVirtualPlantStore } from "./stores/virtualPlant";
+import { useAppDataStore } from "./stores/appData";
 const route = useRoute();
 const router = useRouter();
 const dataFile = ref<File | null>(null);
 const dataSource = ref("尚未加载数据");
+const settingsOpen = ref(false);
 const uploadStatus = ref("");
 const apiOnline = ref(false);
 const tensorflowAvailable = ref(false);
 const cozeConfigured = ref(false);
 const plant = useVirtualPlantStore();
+const appData = useAppDataStore();
 const isVirtualPlant = computed(
   () => route.path === "/3d" || route.path === "/process",
 );
@@ -54,19 +57,17 @@ async function upload() {
   if (!dataFile.value) return;
   uploadStatus.value = "正在识别数据格式…";
   try {
-    const form = new FormData();
-    form.append("file", dataFile.value);
-    const r = await api.post("/data/upload", form);
-    dataSource.value = `Excel：${r.data.rows} 条记录`;
-    uploadStatus.value = r.data.conversion_info || "数据加载成功";
+    const r = await appData.upload(dataFile.value);
+    dataSource.value = appData.dataSource;
+    uploadStatus.value = r.conversion_info || "数据加载成功";
   } catch {
     uploadStatus.value = "数据加载错误，请检查 Excel 格式或后端服务";
   }
 }
 async function simulate() {
   try {
-    const r = await api.post("/data/simulate");
-    dataSource.value = `模拟数据：${r.data.records.length} 条记录`;
+    await appData.simulate();
+    dataSource.value = appData.dataSource;
     uploadStatus.value = "模拟数据生成完成";
   } catch {
     uploadStatus.value = "模拟数据生成失败，请检查 FastAPI 服务";
@@ -114,10 +115,6 @@ onMounted(checkHealth);
           </div>
           <template v-if="isVirtualPlant">
             <div class="status-item">
-              数据模式
-              <b class="demo-text">{{ plant.state?.data_mode || "DEMO" }}</b>
-            </div>
-            <div class="status-item">
               仿真时间 <b>{{ plantClock }}</b>
             </div>
             <div class="status-item">
@@ -147,12 +144,15 @@ onMounted(checkHealth);
         class="workspace"
         :class="{ 'virtual-plant-workspace': isVirtualPlant }"
       >
-        <section v-if="!isVirtualPlant" class="settings-drawer">
+        <button v-if="!isVirtualPlant" class="settings-toggle" @click="settingsOpen = true">数据输入与设置</button>
+        <div v-if="!isVirtualPlant && settingsOpen" class="settings-backdrop" @click.self="settingsOpen = false"></div>
+        <section v-if="!isVirtualPlant && settingsOpen" class="settings-drawer">
           <div class="drawer-heading">
             <div>
               <span class="section-kicker">全局设置</span>
               <h2>数据输入与设置</h2>
             </div>
+            <button class="drawer-close" aria-label="关闭设置" @click="settingsOpen = false">×</button>
             <span class="connection-badge" :class="{ online: apiOnline }">{{
               apiLabel
             }}</span>
@@ -168,7 +168,7 @@ onMounted(checkHealth);
               "
             /><span>{{ dataFile?.name || "选择 .xlsx 文件" }}</span></label
           >
-          <p v-if="uploadStatus" class="drawer-status">{{ uploadStatus }}</p>
+          <p v-if="uploadStatus || appData.conversionInfo" class="drawer-status">{{ uploadStatus || appData.conversionInfo }}</p>
           <div class="setting-group">
             <h3>工艺优化模拟</h3>
             <label

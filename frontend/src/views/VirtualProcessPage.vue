@@ -12,10 +12,6 @@ onUnmounted(() => store.stopPolling());
 </script>
 <template>
   <section class="vp-process-page">
-    <div class="demo-disclaimer">
-      <span>DEMO</span
-      ><strong>当前为示范仿真数据，不代表真实水厂运行结果</strong>
-    </div>
     <header>
       <div>
         <span class="section-kicker">SAME STATE / 2D VIEW</span>

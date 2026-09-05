@@ -72,9 +72,8 @@ onUnmounted(() => store.stopPolling());
       正在装载示范水厂配置与仿真状态…
     </div>
     <template v-else-if="store.config && store.state"
-      ><div class="demo-disclaimer">
-        <span>DEMO</span><strong>{{ store.state.disclaimer }}</strong
-        ><button @click="showFormula = true">查看公式可信度</button>
+      ><div class="vp-page-tools">
+        <button @click="showFormula = true">查看公式可信度</button>
       </div>
       <header class="vp-commandbar">
         <div class="vp-command-title">
@@ -82,10 +81,6 @@ onUnmounted(() => store.stopPolling());
           <h2>{{ store.config.plant_name }}</h2>
         </div>
         <div class="vp-live-status">
-          <div>
-            <small>数据模式</small
-            ><b class="demo-mode">{{ store.state.data_mode }}</b>
-          </div>
           <div>
             <small>仿真时间</small><b>{{ simulationClock }}</b>
           </div>
